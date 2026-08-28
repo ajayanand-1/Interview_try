@@ -1,4 +1,4 @@
-"""FastAPI Main Application Entrypoint for Project Rosetta (Phase 6B & Production)."""
+"""FastAPI Unified Application Entrypoint for Project Rosetta & Production Deployments (Koyeb / Cloud)."""
 
 import os
 import sys
@@ -9,16 +9,21 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from src.api.routes.evaluations import router as evaluations_router
+
+FRONTEND_DIST = _REPO_ROOT / "frontend" / "dist"
 
 app = FastAPI(
     title="Project Rosetta — Multi-Agent AI Interview Panel API",
     description="HTTP API for orchestrating multi-agent interview panel simulations and retrieving traceable evaluation deliverables.",
-    version="1.0.0"
+    version="1.0.0",
+    docs_url="/docs",
+    openapi_url="/openapi.json"
 )
 
 # CORS Configuration for local React frontend + production deployments
@@ -56,6 +61,54 @@ async def health_check():
 app.include_router(evaluations_router, prefix="/api")
 
 
+# Mount static assets if compiled frontend exists
+if FRONTEND_DIST.exists() and (FRONTEND_DIST / "assets").exists():
+    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="assets")
+
+
+# SPA Catch-all and static root handlers
+@app.get("/", include_in_schema=False)
+async def serve_root():
+    """Serve SPA index.html or API welcome message."""
+    index_path = FRONTEND_DIST / "index.html"
+    if index_path.exists():
+        return FileResponse(str(index_path))
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "service": "Prompt Wars Multi-Agent Hiring Intelligence API",
+            "status": "online",
+            "docs": "/docs",
+            "health": "/api/health"
+        }
+    )
+
+
+@app.get("/{full_path:path}", include_in_schema=False)
+async def serve_spa(full_path: str, request: Request):
+    """Serve SPA pages for non-API routes or return 404 for unknown /api/ paths."""
+    if full_path.startswith("api/") or full_path in ["docs", "openapi.json", "redoc"]:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"API endpoint '/{full_path}' not found."
+        )
+
+    # Check if exact static file exists in dist (e.g. vite.svg, robots.txt)
+    target_file = FRONTEND_DIST / full_path
+    if target_file.is_file():
+        return FileResponse(str(target_file))
+
+    # Otherwise return index.html for React client-side routing
+    index_path = FRONTEND_DIST / "index.html"
+    if index_path.exists():
+        return FileResponse(str(index_path))
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"Path '/{full_path}' not found and frontend/dist has not been built."
+    )
+
+
 # Structured Global Exception Handlers
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -71,4 +124,5 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("src.api.main:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run("src.api.main:app", host="0.0.0.0", port=port, reload=False)

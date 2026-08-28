@@ -9,7 +9,15 @@ import {
   EvaluationPhaseType,
 } from '../types/api';
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
+// In development, default to http://127.0.0.1:8000; in production (unified server), default to '' (same-origin)
+const rawBase = import.meta.env.VITE_API_BASE_URL;
+const API_BASE = (
+  rawBase !== undefined && rawBase !== ''
+    ? rawBase
+    : import.meta.env.DEV
+    ? 'http://127.0.0.1:8000'
+    : ''
+).replace(/\/$/, '');
 
 export class ApiError extends Error {
   status: number;
