@@ -1,0 +1,30 @@
+{
+  "persona": "hr_culture_agent",
+  "candidate_id": "ananya_iyer",
+  "score": 9,
+  "confidence": "high",
+  "verdict_summary": "Exceptional psychological safety, ego-free ownership, and cultural alignment. When an outage occurred, she owned it publicly without shifting blame, conducted a retro, and instituted a lasting pre-deploy checklist. Openly acknowledged resume limitations.",
+  "strengths": [
+    {
+      "claim": "Directly took full ownership of production prompt outage in retro without blaming lack of review process",
+      "citation_id": "T-A7"
+    },
+    {
+      "claim": "Proactively introduced permanent pre-deploy checklist with eval set following incident",
+      "citation_id": "R-EXP-04"
+    },
+    {
+      "claim": "Self-discloses multi-agent gap transparently rather than bluffing",
+      "citation_id": "T-A3"
+    }
+  ],
+  "gaps": [
+    {
+      "claim": "Pushed prompt change directly to production without review causing two-hour outage",
+      "citation_id": "T-A5"
+    }
+  ],
+  "insufficient_evidence_items": [],
+  "contrarian_argument": "While her incident handling was textbook, pushing unreviewed changes straight to prod shows past recklessness with guardrails; also, spending 6 years in one company might mean slower cultural adaptation to high-velocity early-stage startup friction.",
+  "created_at": "2026-08-28T06:57:19.408948Z"
+}

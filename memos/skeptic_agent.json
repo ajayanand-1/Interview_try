@@ -1,0 +1,30 @@
+{
+  "persona": "skeptic_agent",
+  "candidate_id": "ananya_iyer",
+  "score": 4,
+  "confidence": "high",
+  "verdict_summary": "The candidate is fundamentally unproven for an 'Agentic Systems' engineering position. She has only shipped single-agent RAG, inflated her resume with an unverified 40% accuracy metric, and has never managed autonomous multi-agent state or tool loops in production.",
+  "strengths": [
+    {
+      "claim": "Maintained reliable Python/FastAPI microservices and OCR pipelines for internal tools",
+      "citation_id": "R-EXP-01"
+    }
+  ],
+  "gaps": [
+    {
+      "claim": "Zero production multi-agent orchestration experience; role requires shipping multi-agent workers on day one",
+      "citation_id": "T-A3"
+    },
+    {
+      "claim": "40% accuracy claim on resume was unverified spot-checking without quantitative benchmarks",
+      "citation_id": "T-A2"
+    },
+    {
+      "claim": "History of deploying unreviewed prompt changes straight to production resulting in service failures",
+      "citation_id": "T-A5"
+    }
+  ],
+  "insufficient_evidence_items": [],
+  "contrarian_argument": null,
+  "created_at": "2026-08-28T06:57:19.421111Z"
+}

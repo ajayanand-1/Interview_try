@@ -1,0 +1,30 @@
+{
+  "persona": "hiring_manager_agent",
+  "candidate_id": "ananya_iyer",
+  "score": 7,
+  "confidence": "high",
+  "verdict_summary": "High-retention, low-drama engineering investment. Six years of escalating scope and adaptation at Bridgepoint proves high loyalty and low flight risk. While she requires 4-6 weeks of multi-agent ramp-up, her production discipline prevents costly outages.",
+  "strengths": [
+    {
+      "claim": "Proven 6-year retention and continuous internal adaptation from backend to AI",
+      "citation_id": "T-A10"
+    },
+    {
+      "claim": "Track record of picking up new domains (OCR then RAG) quickly with low overhead",
+      "citation_id": "T-A8"
+    },
+    {
+      "claim": "Strong reliability bet who instituted lasting team quality processes",
+      "citation_id": "T-A9"
+    }
+  ],
+  "gaps": [
+    {
+      "claim": "Requires upfront payroll investment and mentoring to ramp on multi-agent frameworks",
+      "citation_id": "T-A8"
+    }
+  ],
+  "insufficient_evidence_items": [],
+  "contrarian_argument": null,
+  "created_at": "2026-08-28T06:57:19.415186Z"
+}

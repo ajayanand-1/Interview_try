@@ -1,0 +1,18 @@
+Metadata-Version: 2.4
+Name: interview-panel-simulator
+Version: 0.1.0
+Summary: Multi-Agent AI Interview Panel Simulator (Project Rosetta)
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: google-genai>=0.1.1
+Requires-Dist: google-generativeai>=0.8.0
+Requires-Dist: pydantic>=2.7.0
+Requires-Dist: pydantic-settings>=2.2.0
+Requires-Dist: pypdf>=4.0.0
+Requires-Dist: pdfplumber>=0.11.0
+Requires-Dist: reportlab>=4.1.0
+Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: rich>=13.7.0
+Requires-Dist: typer>=0.9.0
+
+# promptwars

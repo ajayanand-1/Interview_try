@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "interview-panel-simulator"
+version = "0.1.0"
+description = "Multi-Agent AI Interview Panel Simulator (Project Rosetta)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "google-genai>=0.1.1",
+    "google-generativeai>=0.8.0",
+    "pydantic>=2.7.0",
+    "pydantic-settings>=2.2.0",
+    "pypdf>=4.0.0",
+    "pdfplumber>=0.11.0",
+    "reportlab>=4.1.0",
+    "python-dotenv>=1.0.0",
+    "rich>=13.7.0",
+    "typer>=0.9.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

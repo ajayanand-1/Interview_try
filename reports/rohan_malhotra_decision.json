@@ -1,0 +1,81 @@
+{
+  "candidate_id": "rohan_malhotra",
+  "candidate_name": "Rohan Malhotra",
+  "final_recommendation": "no_hire",
+  "confidence_level": "high",
+  "strengths": [
+    {
+      "claim": "Hands-on familiarity designing planner/executor/reviewer exception handling patterns for freight ops",
+      "citation_id": "R-EXP-01"
+    },
+    {
+      "claim": "Implemented cost-based model routing across GPT-4 and open-weight SLMs reducing inference expense",
+      "citation_id": "R-EXP-02"
+    },
+    {
+      "claim": "Experience building RAG pipelines over carrier rate documents with LangChain and Pinecone",
+      "citation_id": "R-EXP-05"
+    }
+  ],
+  "concerns": [
+    {
+      "claim": "Material resume misrepresentation: claimed 'sole architect' on resume but admitted in interview that teammate Priya built most of production code",
+      "citation_id": "T-A7"
+    },
+    {
+      "claim": "Severe retention flight risk with 3 jobs in 3.5 years, explicitly motivated by short-term title and salary hops",
+      "citation_id": "T-A10"
+    },
+    {
+      "claim": "Zero evaluation rigor: unable to provide metrics or override rates for production reviewer agent",
+      "citation_id": "T-A3"
+    },
+    {
+      "claim": "Model routing was tuned heuristically as things broke without formal evaluation sets or regression benchmarks",
+      "citation_id": "T-A4"
+    },
+    {
+      "claim": "Defensive responses and friction regarding credit sharing on engineering projects",
+      "citation_id": "T-A6"
+    },
+    {
+      "claim": "Dismissive of production on-call operational rigor due to small past user bases",
+      "citation_id": "T-A9"
+    }
+  ],
+  "unresolved_disagreements": [
+    {
+      "topic": "Day-One Multi-Agent Domain Velocity vs. Flight Risk & Integrity Deficit",
+      "positions": {
+        "technical_agent": "Emphasizes immediate productivity on planner/executor/reviewer freight workflows [R-EXP-01].",
+        "hiring_manager_agent": "Argues an engineer who departs after 7 months [R-EXP-01, T-A10] inflicts severe net negative ROI.",
+        "skeptic_agent": "Argues that unverified error metrics [T-A3] and resume inflation [T-A7] create catastrophic platform debt."
+      }
+    }
+  ],
+  "decision_path": {
+    "auto_resolved": false,
+    "auto_resolve_reason": null,
+    "original_gs_decision": "no_hire",
+    "original_gs_confidence": "high",
+    "original_gs_rationale": "The General Secretary renders a definitive NO-HIRE recommendation with HIGH confidence. While Rohan Malhotra possesses relevant conceptual familiarity with planner/executor/reviewer architectures [R-EXP-01], serious evidentiary defects disqualify his candidacy. Under cross-examination in [T-A7], he walked back his resume claim of 'sole architect' [R-EXP-03], conceding that teammate Priya implemented most of the production code. Furthermore, he demonstrated a complete absence of evaluation rigor, failing to track reviewer override rates [T-A3] and tuning model routing heuristically as things broke [T-A4]. Most critically, having held 3 jobs in 3.5 years [T-A10] driven purely by short-term compensation hopping, hiring him represents an untenable flight risk and negative net ROI.",
+    "override_motion_filed": true,
+    "override_motion": {
+      "filed_by": "technical_agent",
+      "motion_text": "Candidate has direct, immediate architectural familiarity with planner/executor/reviewer freight pipelines and can ship features on day one [R-EXP-01].",
+      "proposed_decision": "hire",
+      "votes": {
+        "technical_agent": "support",
+        "hr_culture_agent": "oppose",
+        "hiring_manager_agent": "oppose",
+        "skeptic_agent": "oppose"
+      },
+      "support_count": 1,
+      "passed": false,
+      "rationale": "Motion failed (1/4 votes in favor). Panel overwhelmingly concluded that day-one speed cannot compensate for material integrity concerns, absent evaluation metrics, and severe 6-month flight risk."
+    },
+    "final_decision_after_overrides": "no_hire",
+    "final_confidence": "high"
+  },
+  "generated_at": "2026-08-28T06:57:19.253525Z"
+}

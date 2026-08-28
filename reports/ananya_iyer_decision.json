@@ -1,0 +1,80 @@
+{
+  "candidate_id": "ananya_iyer",
+  "candidate_name": "Ananya Iyer",
+  "final_recommendation": "hire",
+  "confidence_level": "high",
+  "strengths": [
+    {
+      "claim": "Publicly took full personal ownership of production outage in retro without shifting blame to lack of review process",
+      "citation_id": "T-A7"
+    },
+    {
+      "claim": "Proactively introduced permanent pre-deploy checklist with automated eval sets that became team standard",
+      "citation_id": "R-EXP-04"
+    },
+    {
+      "claim": "Demonstrated 6-year retention stability with continuous career evolution from junior backend to AI lead",
+      "citation_id": "T-A10"
+    },
+    {
+      "claim": "Implemented production RAG support-ticket assistant using Chroma with section-based semantic chunking",
+      "citation_id": "T-A1"
+    },
+    {
+      "claim": "Maintained high-reliability Python/FastAPI microservices for internal operations platform",
+      "citation_id": "R-EXP-01"
+    },
+    {
+      "claim": "Pragmatic ramp-up approach focusing on reading production failure modes and pairing on bug fixes",
+      "citation_id": "T-A4"
+    }
+  ],
+  "concerns": [
+    {
+      "claim": "Lacks production multi-agent orchestration framework experience (LangGraph, CrewAI, AutoGen)",
+      "citation_id": "T-A3"
+    },
+    {
+      "claim": "Resume ~40% accuracy improvement claim was based on informal spot-checking rather than formal benchmarks",
+      "citation_id": "T-A2"
+    },
+    {
+      "claim": "Pushed prompt change directly to production without review causing a 2-hour service degradation",
+      "citation_id": "T-A5"
+    }
+  ],
+  "unresolved_disagreements": [
+    {
+      "topic": "Day-One Multi-Agent Framework Mastery vs. 4-Week Ramp Feasibility",
+      "positions": {
+        "technical_agent": "Believes candidate's strong backend and RAG fundamentals enable rapid ramp within 4 weeks via pairing on bug fixes [T-A4].",
+        "skeptic_agent": "Maintains that autonomous agent concurrency and tool loops require proven production experience from day one [T-A3]."
+      }
+    }
+  ],
+  "decision_path": {
+    "auto_resolved": false,
+    "auto_resolve_reason": null,
+    "original_gs_decision": "hire",
+    "original_gs_confidence": "high",
+    "original_gs_rationale": "The General Secretary renders a definitive HIRE recommendation with HIGH confidence. Ananya Iyer exhibits world-class engineering discipline, transparent incident management, and remarkable retention loyalty. When she caused a production outage, she took unequivocal public ownership in the retro [T-A7], instituted permanent pre-deploy checklists and evaluation sets [R-EXP-04], and adapted continuously across 6 years at Bridgepoint from backend to OCR to RAG [T-A10]. While she has not shipped multi-agent frameworks in production [T-A3], her structured plan to read codebase patterns and pair on bug fixes [T-A4], coupled with solid FastAPI/microservice fundamentals [R-EXP-01] and Chroma RAG implementation [T-A1], makes her ramp-up period a low-risk, high-return investment.",
+    "override_motion_filed": true,
+    "override_motion": {
+      "filed_by": "skeptic_agent",
+      "motion_text": "Candidate lacks production experience in multi-agent orchestration frameworks (LangGraph/CrewAI), which is the primary charter of this role [T-A3].",
+      "proposed_decision": "no_hire",
+      "votes": {
+        "technical_agent": "oppose",
+        "hr_culture_agent": "oppose",
+        "hiring_manager_agent": "oppose",
+        "skeptic_agent": "support"
+      },
+      "support_count": 1,
+      "passed": false,
+      "rationale": "Motion failed to achieve required 75% supermajority (1/4 votes in favor). Technical, HR, and Hiring Manager agents affirmed that candidate's backend discipline and ownership outweigh the short ramp-up curve."
+    },
+    "final_decision_after_overrides": "hire",
+    "final_confidence": "high"
+  },
+  "generated_at": "2026-08-28T06:57:19.177657Z"
+}

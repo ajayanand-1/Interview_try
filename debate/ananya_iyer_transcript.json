@@ -1,0 +1,286 @@
+{
+  "candidate_id": "ananya_iyer",
+  "candidate_name": "Ananya Iyer",
+  "agenda": [
+    "Production Multi-Agent Orchestration Gap vs. Single-Agent RAG Foundations",
+    "Incident Ownership, Post-Mortem Rigor, and Deployment Guardrails",
+    "Long-Term Ramp-Up ROI, Single-Company Tenure, and Startup Adaptation"
+  ],
+  "rounds": [
+    {
+      "round_num": 1,
+      "agenda_item": "Production Multi-Agent Orchestration Gap vs. Single-Agent RAG Foundations",
+      "turns": [
+        {
+          "persona": "general_secretary",
+          "statement": "Opening Round 1 on Agenda Item 1: Candidate has solid single-agent RAG experience [T-A1] but self-disclosed zero production multi-agent framework experience [T-A3]. How do we weight this gap against the JD's requirements?",
+          "cites": [
+            "T-A1",
+            "T-A3"
+          ],
+          "responds_to": null,
+          "is_counter_question_response": false
+        },
+        {
+          "persona": "technical_agent",
+          "statement": "Her single-agent RAG with Chroma and section-based chunking [T-A1] demonstrates sound retrieval fundamentals. While lacking LangGraph in production [T-A3], her plan to pair on small bug fixes first [T-A4] shows realistic ramp-up awareness.",
+          "cites": [
+            "T-A1",
+            "T-A3",
+            "T-A4"
+          ],
+          "responds_to": null,
+          "is_counter_question_response": false
+        },
+        {
+          "persona": "skeptic_agent",
+          "statement": "The job title is literally 'AI Engineer — Agentic Systems'. Toy projects on personal time [T-A3] do not prepare an engineer for managing concurrent agent state loops, tool errors, and carrier integrations.",
+          "cites": [
+            "T-A3"
+          ],
+          "responds_to": null,
+          "is_counter_question_response": false
+        },
+        {
+          "persona": "hr_culture_agent",
+          "statement": "Notice how directly she disclosed this gap in [T-A3] without hedging or bluffing. In a fast-moving AI role, intellectual honesty and asking for help early [T-A8] prevents disastrous hidden failures.",
+          "cites": [
+            "T-A3",
+            "T-A8"
+          ],
+          "responds_to": null,
+          "is_counter_question_response": false
+        },
+        {
+          "persona": "hiring_manager_agent",
+          "statement": "From an ROI perspective, a 4-week ramp period on multi-agent frameworks is a modest payroll investment if she brings 4 years of reliable FastAPI/microservice production discipline [R-EXP-01].",
+          "cites": [
+            "R-EXP-01",
+            "T-A8"
+          ],
+          "responds_to": null,
+          "is_counter_question_response": false
+        },
+        {
+          "persona": "general_secretary",
+          "statement": "Counter-question to Skeptic Agent: Does her 4-year tenure maintaining internal microservices [R-EXP-01] mitigate your concern about fundamental backend execution?",
+          "cites": [
+            "R-EXP-01"
+          ],
+          "responds_to": null,
+          "is_counter_question_response": false
+        },
+        {
+          "persona": "skeptic_agent",
+          "statement": "Backend REST endpoints [R-EXP-05] are straightforward; orchestrating autonomous agents that modify live database state without human supervision is fundamentally different.",
+          "cites": [
+            "R-EXP-05"
+          ],
+          "responds_to": null,
+          "is_counter_question_response": true
+        }
+      ],
+      "votes": {
+        "technical_agent": 6,
+        "hr_culture_agent": 9,
+        "hiring_manager_agent": 7,
+        "skeptic_agent": 4
+      },
+      "score_deltas_from_previous_round": {},
+      "auto_resolve_triggered": null
+    },
+    {
+      "round_num": 2,
+      "agenda_item": "Incident Ownership, Post-Mortem Rigor, and Deployment Guardrails",
+      "turns": [
+        {
+          "persona": "general_secretary",
+          "statement": "Round 2 on Agenda Item 2: Examining the candidate's handling of the production prompt outage [T-A5], the subsequent retro [T-A6], and skeptic follow-up response [T-A7].",
+          "cites": [
+            "T-A5",
+            "T-A6",
+            "T-A7"
+          ],
+          "responds_to": null,
+          "is_counter_question_response": false
+        },
+        {
+          "persona": "hr_culture_agent",
+          "statement": "Her response in [T-A7] was measured and ego-free: she publicly named the error as hers in the retro doc, refused to hide behind lack of process, and instituted a lasting pre-deploy checklist [R-EXP-04].",
+          "cites": [
+            "T-A7",
+            "R-EXP-04"
+          ],
+          "responds_to": null,
+          "is_counter_question_response": false
+        },
+        {
+          "persona": "skeptic_agent",
+          "statement": "She pushed untested prompt modifications directly to production without any safeguards [T-A5]. That broke production for two hours. Good post-mortem hygiene does not erase poor deployment discipline.",
+          "cites": [
+            "T-A5"
+          ],
+          "responds_to": null,
+          "is_counter_question_response": false
+        },
+        {
+          "persona": "technical_agent",
+          "statement": "Crucially, she created an automated eval set and pre-deploy checklist [R-EXP-04] immediately afterward that became team standard. That is exactly the engineering maturity Cargonet needs.",
+          "cites": [
+            "R-EXP-04"
+          ],
+          "responds_to": null,
+          "is_counter_question_response": false
+        },
+        {
+          "persona": "hiring_manager_agent",
+          "statement": "An engineer who has caused an outage, fixed the root cause, and hardened team process [T-A9] is statistically far less likely to make that catastrophic mistake again than someone who has never touched production.",
+          "cites": [
+            "T-A9"
+          ],
+          "responds_to": null,
+          "is_counter_question_response": false
+        }
+      ],
+      "votes": {
+        "technical_agent": 7,
+        "hr_culture_agent": 9,
+        "hiring_manager_agent": 7,
+        "skeptic_agent": 4
+      },
+      "score_deltas_from_previous_round": {
+        "technical_agent": "+1 after evaluating permanent pre-deploy checklist and eval set [R-EXP-04]"
+      },
+      "auto_resolve_triggered": null
+    },
+    {
+      "round_num": 3,
+      "agenda_item": "Long-Term Ramp-Up ROI, Single-Company Tenure, and Startup Adaptation",
+      "turns": [
+        {
+          "persona": "general_secretary",
+          "statement": "Floor is open for Free-For-All debate on Agenda Item 3: Single-company tenure (6 years at Bridgepoint) and long-term ramp ROI [T-A10]. Direct rebuttals are encouraged.",
+          "cites": [
+            "T-A10"
+          ],
+          "responds_to": null,
+          "is_counter_question_response": false
+        },
+        {
+          "persona": "skeptic_agent",
+          "statement": "Spending 6 years at one company [T-A10] creates organizational inertia. She has never worked in a high-urgency startup where agent architectures evolve weekly.",
+          "cites": [
+            "T-A10"
+          ],
+          "responds_to": null,
+          "is_counter_question_response": false
+        },
+        {
+          "persona": "hiring_manager_agent",
+          "statement": "I strongly rebut Skeptic's framing. Her role evolved across 3 distinct phases inside Bridgepoint [T-A10] — junior backend [R-EXP-05], OCR migration lead [R-EXP-02], to AI lead [R-EXP-03]. Her retention profile is gold in an industry plagued by 8-month mercenaries.",
+          "cites": [
+            "T-A10",
+            "R-EXP-05",
+            "R-EXP-02",
+            "R-EXP-03"
+          ],
+          "responds_to": "skeptic_agent",
+          "is_counter_question_response": false
+        },
+        {
+          "persona": "technical_agent",
+          "statement": "I agree with Hiring Manager. Her structured ramp plan — reading our codebase directly and pairing on bug fixes [T-A4] — will have her shipping agent features within 30 days.",
+          "cites": [
+            "T-A4"
+          ],
+          "responds_to": "skeptic_agent",
+          "is_counter_question_response": false
+        },
+        {
+          "persona": "skeptic_agent",
+          "statement": "I acknowledge her interview defensiveness was low [T-A7] and her self-awareness in [T-A8] is genuine. I will nudge my score up slightly from 4 to 5, though the day-1 multi-agent deficit remains a concern.",
+          "cites": [
+            "T-A7",
+            "T-A8"
+          ],
+          "responds_to": "hiring_manager_agent",
+          "is_counter_question_response": false
+        }
+      ],
+      "votes": {
+        "technical_agent": 7,
+        "hr_culture_agent": 9,
+        "hiring_manager_agent": 8,
+        "skeptic_agent": 5
+      },
+      "score_deltas_from_previous_round": {
+        "hiring_manager_agent": "+1 after reviewing 3-stage internal adaptability track record [T-A10]",
+        "skeptic_agent": "+1 acknowledging authentic ownership and low defensiveness in [T-A7]"
+      },
+      "auto_resolve_triggered": null
+    },
+    {
+      "round_num": 4,
+      "agenda_item": "Final Deliberation and Maturity Consolidation",
+      "turns": [
+        {
+          "persona": "general_secretary",
+          "statement": "Final deliberation round before Decision Stage. All positions have been argued across multi-agent ramp, production ownership, and retention.",
+          "cites": [],
+          "responds_to": null,
+          "is_counter_question_response": false
+        },
+        {
+          "persona": "technical_agent",
+          "statement": "Final position: Score 7/10. Solid backend foundation [R-EXP-01], proven RAG execution [T-A1], easily rampable on multi-agent frameworks.",
+          "cites": [
+            "R-EXP-01",
+            "T-A1"
+          ],
+          "responds_to": null,
+          "is_counter_question_response": false
+        },
+        {
+          "persona": "hr_culture_agent",
+          "statement": "Final position: Score 9/10. Exemplary culture match, high psychological safety, zero ego, transparent incident management [T-A7].",
+          "cites": [
+            "T-A7"
+          ],
+          "responds_to": null,
+          "is_counter_question_response": false
+        },
+        {
+          "persona": "hiring_manager_agent",
+          "statement": "Final position: Score 8/10. Outstanding retention stability [T-A10], reliable production ownership [T-A9], high net positive ROI.",
+          "cites": [
+            "T-A10",
+            "T-A9"
+          ],
+          "responds_to": null,
+          "is_counter_question_response": false
+        },
+        {
+          "persona": "skeptic_agent",
+          "statement": "Final position: Score 5/10. Acknowledged strengths in ownership [T-A7], but maintaining reservation on day-1 multi-agent autonomy [T-A3].",
+          "cites": [
+            "T-A7",
+            "T-A3"
+          ],
+          "responds_to": null,
+          "is_counter_question_response": false
+        }
+      ],
+      "votes": {
+        "technical_agent": 7,
+        "hr_culture_agent": 9,
+        "hiring_manager_agent": 8,
+        "skeptic_agent": 5
+      },
+      "score_deltas_from_previous_round": {},
+      "auto_resolve_triggered": null
+    }
+  ],
+  "maturity_reached": true,
+  "total_rounds": 4,
+  "finalized_at": "2026-08-28T06:57:19.426817Z"
+}

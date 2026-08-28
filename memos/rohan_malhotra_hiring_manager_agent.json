@@ -1,0 +1,30 @@
+{
+  "persona": "hiring_manager_agent",
+  "candidate_id": "rohan_malhotra",
+  "score": 5,
+  "confidence": "high",
+  "verdict_summary": "High-risk, high-velocity bet. He can ship multi-agent features on day one with zero ramp cost, but his tenure pattern (3 jobs in 3.5 years, 7 months at Voltrix) screams flight risk. I risk paying 6 months of salary only to watch him jump ship for another 20% bump.",
+  "strengths": [
+    {
+      "claim": "Zero ramp-up required on multi-agent freight ops architecture",
+      "citation_id": "T-A8"
+    },
+    {
+      "claim": "Production experience with 5,000+ monthly freight exceptions",
+      "citation_id": "R-EXP-03"
+    }
+  ],
+  "gaps": [
+    {
+      "claim": "Severe retention risk with 3 jobs in 3.5 years, explicitly motivated by quick title and pay hops",
+      "citation_id": "T-A10"
+    },
+    {
+      "claim": "Untested in high-incident production volume despite on-call claims",
+      "citation_id": "T-A9"
+    }
+  ],
+  "insufficient_evidence_items": [],
+  "contrarian_argument": null,
+  "created_at": "2026-08-28T06:57:19.360378Z"
+}

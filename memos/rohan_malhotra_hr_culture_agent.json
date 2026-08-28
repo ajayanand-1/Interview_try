@@ -1,0 +1,30 @@
+{
+  "persona": "hr_culture_agent",
+  "candidate_id": "rohan_malhotra",
+  "score": 4,
+  "confidence": "medium",
+  "verdict_summary": "Significant cultural concern regarding teamwork, credit sharing, and defensiveness. Conceded only under cross-examination that he overstated his role as 'sole architect' while his teammate Priya built most of the production code.",
+  "strengths": [
+    {
+      "claim": "Clear and assertive communicator who is confident in technical directions",
+      "citation_id": "T-A5"
+    }
+  ],
+  "gaps": [
+    {
+      "claim": "Overstated contribution as 'sole architect' on resume when teammate Priya implemented most of production system",
+      "citation_id": "T-A7"
+    },
+    {
+      "claim": "Demonstrated friction and defensiveness when questioned on team contributions and review metrics",
+      "citation_id": "T-A6"
+    },
+    {
+      "claim": "Frequent job changes driven purely by compensation and title chasing",
+      "citation_id": "T-A10"
+    }
+  ],
+  "insufficient_evidence_items": [],
+  "contrarian_argument": "His assertiveness and move-fast attitude might be exactly what an early-stage freight startup needs to outpace competitors, provided he is paired with strong execution partners.",
+  "created_at": "2026-08-28T06:57:19.354545Z"
+}

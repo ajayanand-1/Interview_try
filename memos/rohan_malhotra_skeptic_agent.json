@@ -1,0 +1,34 @@
+{
+  "persona": "skeptic_agent",
+  "candidate_id": "rohan_malhotra",
+  "score": 3,
+  "confidence": "high",
+  "verdict_summary": "Severe credibility and technical rigor deficit. Resumes claim of 'sole architect' was completely debunked in T-A7 when he admitted teammate Priya built the production implementation. Furthermore, he cannot provide basic metrics on reviewer accuracy and tunes model routing arbitrarily.",
+  "strengths": [
+    {
+      "claim": "Familiarity with LangGraph, CrewAI, and multi-agent concepts in logistics",
+      "citation_id": "R-EXP-01"
+    }
+  ],
+  "gaps": [
+    {
+      "claim": "Material resume misrepresentation: claimed 'sole architect' on resume but admitted teammate Priya built most of production code",
+      "citation_id": "T-A7"
+    },
+    {
+      "claim": "Unable to provide data on reviewer agent error catching or override rate",
+      "citation_id": "T-A3"
+    },
+    {
+      "claim": "No formal evaluation or methodology for model routing, relying on ad-hoc tuning as things broke",
+      "citation_id": "T-A4"
+    },
+    {
+      "claim": "No real experience managing high incident volume in production",
+      "citation_id": "T-A9"
+    }
+  ],
+  "insufficient_evidence_items": [],
+  "contrarian_argument": null,
+  "created_at": "2026-08-28T06:57:19.365733Z"
+}

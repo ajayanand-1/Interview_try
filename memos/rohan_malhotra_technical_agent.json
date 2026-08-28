@@ -1,0 +1,34 @@
+{
+  "persona": "technical_agent",
+  "candidate_id": "rohan_malhotra",
+  "score": 8,
+  "confidence": "high",
+  "verdict_summary": "Direct architectural match for Cargonet's stack. Hands-on experience designing planner/executor/reviewer multi-agent pipelines for freight exception handling, prompt engineering, and SLM/GPT-4 cost routing.",
+  "strengths": [
+    {
+      "claim": "Designed planner/executor/reviewer multi-agent exception handling engine handling freight exceptions",
+      "citation_id": "R-EXP-01"
+    },
+    {
+      "claim": "Implemented cost-effective model routing across GPT-4 and open-weight SLMs reducing inference costs ~30%",
+      "citation_id": "R-EXP-02"
+    },
+    {
+      "claim": "Experience with LangChain and Pinecone vector search over carrier rate documents",
+      "citation_id": "R-EXP-05"
+    }
+  ],
+  "gaps": [
+    {
+      "claim": "Vague on reviewer agent evaluation metrics, relying only on untracked override rates",
+      "citation_id": "T-A3"
+    },
+    {
+      "claim": "Model routing was tuned heuristically as things broke rather than via rigorous evaluation benchmarks",
+      "citation_id": "T-A4"
+    }
+  ],
+  "insufficient_evidence_items": [],
+  "contrarian_argument": null,
+  "created_at": "2026-08-28T06:57:19.348354Z"
+}

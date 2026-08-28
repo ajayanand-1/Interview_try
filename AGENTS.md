@@ -1,0 +1,1 @@
+This project implements @PRD_interview_panel_simulator.md. Follow @ANTIGRAVITY_BUILD_PROMPT.md phase by phase.
