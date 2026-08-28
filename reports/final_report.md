@@ -1,6 +1,6 @@
 # Executive Hiring Recommendation: Rohan Malhotra
 **Target Role**: `AI Engineer — Agentic Systems` | **Candidate ID**: `rohan_malhotra`
-**Generated**: 2026-08-28 08:03:52 UTC
+**Generated**: 2026-08-28 08:12:09 UTC
 
 ---
 ## 1. Executive Summary & Final Verdict

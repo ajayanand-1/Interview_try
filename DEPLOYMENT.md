@@ -1,131 +1,139 @@
-# Deployment Guide: Unified Production Server for Koyeb & Cloud
+# Google Cloud Run Deployment Guide: Project Rosetta (Prompt Wars)
 
-This document describes how **PROMPT WARS (Project Rosetta)** operates as a unified, single-origin production application and how to deploy it to platforms like **Koyeb**, **Render**, or **Docker/K8s**.
-
----
-
-## 🏗️ Architecture: Unified Single-Origin Server
-
-In production, a single FastAPI process serves both the backend API and the compiled React Single Page Application (SPA):
-
-```
-                                Client Browser
-                                      │
-                   ┌──────────────────┴──────────────────┐
-                   │                                     │
-           Path: /api/*, /docs, /openapi.json     Path: /, /evaluations, /jobs...
-                   │                                     │
-                   ▼                                     ▼
-          FastAPI Endpoints                     React SPA (index.html)
-     (Evaluations, Rosetta, Memos,           (Client-side router rendered
-       Debate, Decision, Reports)              from frontend/dist/)
-```
-
-### Route Resolution Hierarchy:
-1. `/api/*` $\rightarrow$ Processed directly by FastAPI routes.
-2. `/api/health` $\rightarrow$ Liveness check returning `{"status": "healthy"}`.
-3. `/docs` & `/openapi.json` $\rightarrow$ Interactive Swagger UI & OpenAPI schema.
-4. `/assets/*` $\rightarrow$ Static assets (JS/CSS bundles) mounted from `frontend/dist/assets/`.
-5. `/*` (e.g. `/`, `/evaluations`, `/evaluations/new`, `/evaluations/:run_id`, `/candidates`, `/jobs`, `/reports`) $\rightarrow$ Returns `frontend/dist/index.html` for client-side routing.
-6. Unknown `/api/*` routes $\rightarrow$ Return JSON `404 Not Found` (never HTML).
+This document provides the complete, production-ready guide for packaging and deploying **PROMPT WARS (Project Rosetta)** to **Google Cloud Run** as a single, unified container.
 
 ---
 
-## 💻 Local Development Workflow
+## 🏗️ Architecture on Google Cloud Run
 
-### 1. Separate Development Mode (Fast Feedback with Vite HMR)
-- **Terminal 1 (FastAPI Backend)**:
-  ```bash
-  ./.venv/bin/uvicorn src.api.main:app --host 127.0.0.1 --port 8000 --reload
-  ```
-- **Terminal 2 (React Vite Frontend)**:
-  ```bash
-  cd frontend && npm run dev
-  ```
-- **One-Command Dev Launcher**:
-  ```bash
-  ./scripts/dev.sh
-  ```
+The entire application runs inside a single container instance on Google Cloud Run:
 
-### 2. Local Production-Serving Verification (Single-Origin Mode)
+```
+                            Google Cloud Run Service
+                     (https://promptwars-<hash>-uc.a.run.app)
+                                       │
+                    ┌──────────────────┴──────────────────┐
+                    │                                     │
+            Path: /api/*, /docs, /openapi.json     Path: /, /evaluations, /jobs...
+                    │                                     │
+                    ▼                                     ▼
+           FastAPI Endpoints                     React SPA (index.html)
+      (Evaluations, Rosetta, Memos,           (Client-side router rendered
+        Debate, Decision, Reports)              from frontend/dist/)
+```
+
+- **Unified Single-Origin**: Eliminates CORS complications by serving both the API and the React frontend on the same port (`$PORT`, default `8080`).
+- **SPA Routing**: Non-API routes (e.g. `/evaluations`, `/evaluations/new`, `/evaluations/:run_id`, `/candidates`, `/jobs`, `/reports`) return `index.html` with status `200 OK` so direct links and browser refreshes work natively.
+- **Dynamic Port Binding**: Automatically binds to `0.0.0.0:$PORT` provided by Google Cloud Run.
+
+---
+
+## 🚀 Google Cloud Run Deployment Instructions
+
+### Method 1: One-Command Source Deployment (Recommended)
+
+Google Cloud Run can build the container image automatically using Cloud Build and deploy it:
+
 ```bash
-# 1. Compile the React frontend
+# 1. Authenticate with Google Cloud
+gcloud auth login
+gcloud config set project YOUR_GCP_PROJECT_ID
+
+# 2. Deploy directly from repository root
+gcloud run deploy promptwars \
+  --source . \
+  --region us-central1 \
+  --platform managed \
+  --allow-unauthenticated \
+  --port 8080 \
+  --set-env-vars GEMINI_API_KEY="your-gemini-api-key"
+```
+
+---
+
+### Method 2: Build with Cloud Build & Artifact Registry
+
+```bash
+# 1. Create an Artifact Registry repository (if not already created)
+gcloud artifacts repositories create promptwars-repo \
+  --repository-format=docker \
+  --location=us-central1 \
+  --description="Prompt Wars Docker Repository"
+
+# 2. Build and push image via Google Cloud Build
+gcloud builds submit --tag us-central1-docker.pkg.dev/YOUR_GCP_PROJECT_ID/promptwars-repo/promptwars:latest .
+
+# 3. Deploy image to Cloud Run
+gcloud run deploy promptwars \
+  --image us-central1-docker.pkg.dev/YOUR_GCP_PROJECT_ID/promptwars-repo/promptwars:latest \
+  --region us-central1 \
+  --platform managed \
+  --allow-unauthenticated \
+  --port 8080 \
+  --set-env-vars GEMINI_API_KEY="your-gemini-api-key"
+```
+
+---
+
+## 🐳 Local Docker Verification
+
+To test the container image locally before deploying to Cloud Run:
+
+```bash
+# 1. Build Docker image locally
+docker build -t promptwars:local .
+
+# 2. Run container locally mapping port 8080
+docker run -p 8080:8080 -e PORT=8080 -e GEMINI_API_KEY="your-key" promptwars:local
+
+# 3. Test endpoints
+curl http://localhost:8080/api/health
+curl http://localhost:8080/
+curl http://localhost:8080/evaluations
+curl http://localhost:8080/docs
+```
+
+---
+
+## 💻 Local Development Workflow (Without Docker)
+
+### 1. Dual-Server Development Mode (with Vite HMR)
+```bash
+./scripts/dev.sh
+```
+- **Frontend UI**: `http://localhost:3000`
+- **Backend API**: `http://127.0.0.1:8000`
+
+### 2. Single-Port Production Mode
+```bash
+# 1. Build frontend
 cd frontend && npm run build && cd ..
 
-# 2. Start the unified FastAPI server
-./.venv/bin/uvicorn src.api.main:app --host 127.0.0.1 --port 8000
+# 2. Run unified FastAPI server
+PORT=8080 ./.venv/bin/uvicorn src.api.main:app --host 0.0.0.0 --port 8080
 ```
-*Open `http://localhost:8000` in your browser. Both the React SPA and API endpoints will function seamlessly from port 8000.*
+- **Unified App**: `http://localhost:8080/`
+- **Swagger Docs**: `http://localhost:8080/docs`
+- **Health Check**: `http://localhost:8080/api/health`
 
 ---
 
-## 🚀 Production Deployment to Koyeb
-
-### Option 1: Koyeb Git-Driven Deployment (Buildpack / Python)
-
-1. **Build Step**:
-   Ensure both Python dependencies and the frontend bundle are compiled:
-   - **Build Command**:
-     ```bash
-     pip install -r requirements.txt && cd frontend && npm install && npm run build && cd ..
-     ```
-2. **Start Step**:
-   - **Run / Start Command**:
-     ```bash
-     uvicorn src.api.main:app --host 0.0.0.0 --port $PORT
-     ```
-
-### Option 2: Koyeb Docker Deployment
-
-A standard `Dockerfile` can be used:
-
-```dockerfile
-# Stage 1: Build React Frontend
-FROM node:20-slim AS frontend-builder
-WORKDIR /app/frontend
-COPY frontend/package*.json ./
-RUN npm install
-COPY frontend/ ./
-RUN npm run build
-
-# Stage 2: Python Backend Runtime
-FROM python:3.11-slim
-WORKDIR /app
-
-# Install dependencies
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy application source & built frontend
-COPY src/ ./src/
-COPY data/ ./data/
-COPY --from=frontend-builder /app/frontend/dist/ ./frontend/dist/
-
-# Koyeb default port
-ENV PORT=8000
-EXPOSE 8000
-
-CMD ["sh", "-c", "uvicorn src.api.main:app --host 0.0.0.0 --port $PORT"]
-```
-
----
-
-## ⚙️ Required Environment Variables
+## ⚙️ Environment Variables Reference
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `PORT` | Optional | `8000` | Port for Uvicorn HTTP server (automatically supplied by Koyeb/Render/Cloud Run). |
-| `ALLOWED_ORIGINS` | Optional | `*` | Comma-separated list of additional CORS origins. |
-| `GEMINI_API_KEY` | Optional | `None` | Google Gemini API key if using live LLM personas. |
-| `OPENAI_API_KEY` | Optional | `None` | OpenAI API key if using OpenAI models. |
+| `PORT` | Auto-provided | `8080` | Port on which the container listens (Cloud Run sets this automatically). |
+| `GEMINI_API_KEY` | Optional | `None` | Google Gemini API key for external LLM evaluation personas. |
+| `ALLOWED_ORIGINS` | Optional | `*` | Comma-separated list of CORS origins if accessing API externally. |
 
 ---
 
-## 🩺 Health Check & Monitoring
+## 🩺 Cloud Run Health Check & Probe Configuration
 
-- **Health Endpoint**: `GET /api/health`
-- **Expected Status**: `200 OK`
-- **Expected Payload**:
+- **Health Check Path**: `/api/health`
+- **Port**: `8080` (or dynamic `$PORT`)
+- **Protocol**: HTTP
+- **Response**:
   ```json
   {
     "status": "healthy",
@@ -133,7 +141,3 @@ CMD ["sh", "-c", "uvicorn src.api.main:app --host 0.0.0.0 --port $PORT"]
     "version": "1.0.0"
   }
   ```
-- **Koyeb Health Check Configuration**:
-  - **Protocol**: HTTP
-  - **Path**: `/api/health`
-  - **Port**: `8000` (or `$PORT`)
