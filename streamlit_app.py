@@ -5,7 +5,6 @@ Evidence-Grounded Multi-Agent Hiring Intelligence.
 import os
 import sys
 import json
-import shutil
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -153,6 +152,22 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
+# --- PERSISTENT SESSION STATE INITIALIZATION ---
+if "current_nav" not in st.session_state:
+    st.session_state["current_nav"] = "📊 Dashboard"
+if "selected_run_id" not in st.session_state:
+    st.session_state["selected_run_id"] = None
+if "candidates_count" not in st.session_state:
+    st.session_state["candidates_count"] = 1
+
+
+def set_navigation(page_name: str, run_id: Optional[str] = None):
+    """Safely switch page and update selected run ID."""
+    st.session_state["current_nav"] = page_name
+    if run_id:
+        st.session_state["selected_run_id"] = run_id
+
+
 def run_single_evaluation(candidate_id: str, candidate_name: str, job_id: str,
                            jd_file=None, resume_file=None, transcript_file=None,
                            progress_bar=None, status_text=None) -> RunWorkspace:
@@ -246,10 +261,16 @@ def run_single_evaluation(candidate_id: str, candidate_name: str, job_id: str,
 st.sidebar.markdown("### ⚔️ PROMPT WARS")
 st.sidebar.caption("Evidence-Grounded Hiring Intelligence")
 
-nav_choice = st.sidebar.radio(
+nav_options = ["📊 Dashboard", "🚀 New Evaluation", "🔬 Evaluation Detail", "🏢 Hiring Room", "👥 Candidates Directory", "📄 Reports Library"]
+current_index = nav_options.index(st.session_state["current_nav"]) if st.session_state["current_nav"] in nav_options else 0
+
+selected_nav = st.sidebar.radio(
     "Navigation",
-    ["🚀 New Evaluation", "📊 Evaluation Sessions", "🏢 Hiring Room", "👥 Candidates Directory", "📄 Reports Library"]
+    nav_options,
+    index=current_index,
+    key="nav_radio"
 )
+st.session_state["current_nav"] = selected_nav
 
 st.sidebar.markdown("---")
 evals_all = list_all_evaluations()
@@ -258,22 +279,101 @@ st.sidebar.metric("Active Personas", "4 Isolated")
 st.sidebar.caption("🟢 Core Engine v1.0 Online")
 
 
-# --- PAGE: NEW EVALUATION ---
-if nav_choice == "🚀 New Evaluation":
+# =====================================================================
+# VIEW 1: DASHBOARD
+# =====================================================================
+if st.session_state["current_nav"] == "📊 Dashboard":
+    st.markdown('<div class="main-header">Recruitment Intelligence Dashboard</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Overview of active evaluation sessions, candidate profiles, and evidence adjudication.</div>', unsafe_allow_html=True)
+
+    # Metric Row
+    evals = list_all_evaluations()
+    unique_candidates = len(set([safe_text(e.get("candidate_id")) for e in evals if isinstance(e, dict)]))
+    unique_jobs = len(set([safe_text(e.get("job_id")) for e in evals if isinstance(e, dict)]))
+    completed_runs = len([e for e in evals if isinstance(e, dict) and safe_text(e.get("status")) == "completed"])
+
+    m1, m2, m3, m4 = st.columns(4)
+    with m1:
+        st.metric("Total Evaluations", len(evals))
+    with m2:
+        st.metric("Unique Candidates", unique_candidates)
+    with m3:
+        st.metric("Target Roles", unique_jobs)
+    with m4:
+        st.metric("Completed Verdicts", completed_runs)
+
+    st.markdown("---")
+
+    col_dash_left, col_dash_right = st.columns([2, 1])
+
+    with col_dash_left:
+        st.markdown("### Recent Evaluation Sessions")
+        if not evals:
+            st.info("No evaluation runs recorded yet. Click below to launch your first evaluation.")
+            if st.button("🚀 Launch First Evaluation", type="primary"):
+                set_navigation("🚀 New Evaluation")
+                st.rerun()
+        else:
+            for e in evals[:6]:
+                if not isinstance(e, dict):
+                    continue
+                rid = safe_text(e.get("run_id"), "unknown_run")
+                cid = safe_text(e.get("candidate_id"), "unknown")
+                cname = safe_text(e.get("candidate_name"), safe_title(cid))
+                jid = safe_text(e.get("job_id"), "default_job")
+                status_str = safe_upper(e.get("status"), "COMPLETED")
+                created_str = safe_text(e.get("created_at"), "")[:19] or "Recent"
+
+                with st.container():
+                    c_info, c_btn = st.columns([3, 1])
+                    with c_info:
+                        st.markdown(f"**{cname}** — `{safe_title(jid)}`")
+                        st.caption(f"Run ID: `{rid}` | Status: `{status_str}` | {created_str}")
+                    with c_btn:
+                        if st.button("Inspect 🔬", key=f"dash_inspect_{rid}", use_container_width=True):
+                            set_navigation("🔬 Evaluation Detail", run_id=rid)
+                            st.rerun()
+                    st.markdown("<hr style='margin: 4px 0;'/>", unsafe_allow_html=True)
+
+    with col_dash_right:
+        st.markdown("### Quick Launch")
+        st.markdown("Start an evaluation with arbitrary candidate files or test demo fixtures:")
+        if st.button("➕ Create New Evaluation", type="primary", use_container_width=True):
+            set_navigation("🚀 New Evaluation")
+            st.rerun()
+
+        st.markdown("---")
+        st.markdown("### Four Isolated Personas")
+        st.markdown("- 🛠️ **Technical Agent**: Architecture, depth, fundamentals")
+        st.markdown("- 🤝 **HR / Culture Agent**: Team dynamics & contrarian check")
+        st.markdown("- 📈 **Hiring Manager**: Velocity, ROI, ramp-up economics")
+        st.markdown("- 🕵️ **Skeptic Agent**: Cross-examination & claim verification")
+
+
+# =====================================================================
+# VIEW 2: NEW EVALUATION
+# =====================================================================
+elif st.session_state["current_nav"] == "🚀 New Evaluation":
     st.markdown('<div class="main-header">Create New Evaluation</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Upload arbitrary candidate documents or test multi-candidate hiring batches with 100% evidence traceability.</div>', unsafe_allow_html=True)
 
-    # Quick Demo Fixture Buttons
+    # Quick Demo Presets
     col_d1, col_d2, col_d3 = st.columns(3)
     with col_d1:
         if st.button("⚡ Preset: Ananya Iyer (Lead AI)", use_container_width=True):
-            st.session_state["preset_ananya"] = True
+            st.session_state["preset_type"] = "ananya"
+            st.session_state["candidates_count"] = 1
+            st.rerun()
     with col_d2:
         if st.button("⚡ Preset: Rohan Malhotra (Senior AI)", use_container_width=True):
-            st.session_state["preset_rohan"] = True
+            st.session_state["preset_type"] = "rohan"
+            st.session_state["candidates_count"] = 1
+            st.rerun()
     with col_d3:
         if st.button("⚡ Preset: Batch (Both Candidates)", use_container_width=True):
-            st.session_state["preset_both"] = True
+            st.session_state["preset_type"] = "both"
+            st.session_state["candidates_count"] = 2
+            st.rerun()
 
     st.markdown("---")
 
@@ -283,26 +383,40 @@ if nav_choice == "🚀 New Evaluation":
     with c_j1:
         job_id_input = st.text_input("Job Role Identifier", value="ai_engineer_freight", help="Unique identifier for the target role")
     with c_j2:
-        jd_file = st.file_uploader("Upload Job Description (PDF or TXT)", type=["pdf", "txt"], help="Optional if using demo files")
+        jd_file = st.file_uploader("Upload Job Description (PDF or TXT)", type=["pdf", "txt"], help="Optional if using demo baseline")
 
     st.markdown("#### 2. Candidate Profiles & Documents")
     
-    # Candidate Count selection
-    num_candidates = st.number_input("Number of Candidates in this Batch", min_value=1, max_value=5, value=2 if st.session_state.get("preset_both") else 1)
+    # Candidate Count Controls
+    c_cnt_col1, c_cnt_col2 = st.columns([2, 1])
+    with c_cnt_col1:
+        num_candidates = st.number_input("Number of Candidates in this Batch", min_value=1, max_value=5, value=st.session_state.get("candidates_count", 1))
+        st.session_state["candidates_count"] = int(num_candidates)
 
+    preset = st.session_state.get("preset_type", None)
     candidate_configs = []
-    for i in range(int(num_candidates)):
+
+    for i in range(int(st.session_state["candidates_count"])):
         with st.expander(f"Candidate #{i+1} Configuration", expanded=True):
             cc1, cc2 = st.columns(2)
-            default_id = "ananya_iyer" if (i == 0 and (st.session_state.get("preset_ananya") or st.session_state.get("preset_both"))) else ("rohan_malhotra" if (i == 1 or st.session_state.get("preset_rohan")) else f"candidate_{i+1}")
-            default_name = default_id.replace("_", " ").title()
+            
+            if preset == "ananya" and i == 0:
+                default_id = "ananya_iyer"
+            elif preset == "rohan" and i == 0:
+                default_id = "rohan_malhotra"
+            elif preset == "both":
+                default_id = "ananya_iyer" if i == 0 else "rohan_malhotra"
+            else:
+                default_id = f"candidate_{i+1}"
+            
+            default_name = safe_title(default_id)
 
             with cc1:
-                c_name = st.text_input(f"Candidate #{i+1} Full Name", value=default_name, key=f"name_{i}")
-                c_id = st.text_input(f"Candidate #{i+1} Identifier Slug", value=default_id, key=f"id_{i}")
+                c_name = st.text_input(f"Candidate #{i+1} Full Name", value=default_name, key=f"cname_{i}")
+                c_id = st.text_input(f"Candidate #{i+1} Identifier Slug", value=default_id, key=f"cid_{i}")
             with cc2:
-                res_f = st.file_uploader(f"Candidate #{i+1} Resume (PDF/TXT)", type=["pdf", "txt"], key=f"res_{i}")
-                trn_f = st.file_uploader(f"Candidate #{i+1} Interview Transcript (PDF/TXT)", type=["pdf", "txt"], key=f"trn_{i}")
+                res_f = st.file_uploader(f"Candidate #{i+1} Resume (PDF/TXT)", type=["pdf", "txt"], key=f"cres_{i}")
+                trn_f = st.file_uploader(f"Candidate #{i+1} Interview Transcript (PDF/TXT)", type=["pdf", "txt"], key=f"ctrn_{i}")
             
             candidate_configs.append({
                 "id": c_id.strip() if c_id else f"candidate_{i+1}",
@@ -336,21 +450,32 @@ if nav_choice == "🚀 New Evaluation":
 
         st.success(f"🎉 Successfully evaluated {len(created_workspaces)} candidate(s)!")
         if created_workspaces:
-            st.session_state["selected_run_id"] = created_workspaces[0].run_id
+            set_navigation("🔬 Evaluation Detail", run_id=created_workspaces[0].run_id)
             st.rerun()
 
 
-# --- PAGE: EVALUATION SESSIONS & DETAIL VIEW ---
-elif nav_choice == "📊 Evaluation Sessions":
-    st.markdown('<div class="main-header">Evaluation Sessions</div>', unsafe_allow_html=True)
+# =====================================================================
+# VIEW 3: EVALUATION DETAIL
+# =====================================================================
+elif st.session_state["current_nav"] == "🔬 Evaluation Detail":
+    st.markdown('<div class="main-header">Evaluation Detail & Deliberation Inspector</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Deep-dive inspection into evidence bibles, pre-debate memos, debate turns, and decision paths.</div>', unsafe_allow_html=True)
 
     evals = list_all_evaluations()
     if not evals:
-        st.info("No evaluation runs recorded yet. Start a new evaluation to inspect results.")
+        st.info("No evaluation runs recorded yet. Launch a new evaluation to inspect results.")
+        if st.button("🚀 Launch Evaluation", type="primary"):
+            set_navigation("🚀 New Evaluation")
+            st.rerun()
     else:
         run_ids = [safe_text(e.get("run_id")) for e in evals if e.get("run_id")]
-        selected_run = st.selectbox("Select Evaluation Run to Inspect", run_ids, index=0)
+        
+        default_index = 0
+        if st.session_state.get("selected_run_id") in run_ids:
+            default_index = run_ids.index(st.session_state["selected_run_id"])
+        
+        selected_run = st.selectbox("Select Evaluation Run to Inspect", run_ids, index=default_index)
+        st.session_state["selected_run_id"] = selected_run
 
         # Load workspace data for selected run
         run_dir = settings.runs_dir / selected_run
@@ -409,14 +534,20 @@ elif nav_choice == "📊 Evaluation Sessions":
             c_str, c_con = st.columns(2)
             with c_str:
                 st.markdown("#### ✅ Validated Strengths")
-                for s in safe_list(decision_data.get("strengths")):
+                strengths_list = safe_list(decision_data.get("strengths"))
+                if not strengths_list:
+                    st.caption("No specific strengths recorded.")
+                for s in strengths_list:
                     if isinstance(s, dict):
                         claim = safe_text(s.get("claim"), "No claim recorded")
                         cit_id = safe_text(s.get("citation_id"), "N/A")
                         st.markdown(f"- {claim} <span class='citation-tag'>[{cit_id}]</span>", unsafe_allow_html=True)
             with c_con:
                 st.markdown("#### ⚠️ Critical Concerns & Gaps")
-                for c in safe_list(decision_data.get("concerns")):
+                concerns_list = safe_list(decision_data.get("concerns"))
+                if not concerns_list:
+                    st.caption("No specific concerns recorded.")
+                for c in concerns_list:
                     if isinstance(c, dict):
                         claim = safe_text(c.get("claim"), "No claim recorded")
                         cit_id = safe_text(c.get("citation_id"), "N/A")
@@ -453,7 +584,10 @@ elif nav_choice == "📊 Evaluation Sessions":
                 c_rf1, c_rf2 = st.columns(2)
                 with c_rf1:
                     st.markdown("#### Verified Resume Facts")
-                    for rf in safe_list(rdata.get("resume_facts")):
+                    r_facts = safe_list(rdata.get("resume_facts"))
+                    if not r_facts:
+                        st.caption("No resume facts extracted.")
+                    for rf in r_facts:
                         if isinstance(rf, dict):
                             cat = safe_upper(rf.get("category"), "FACT")
                             fact_txt = safe_text(rf.get("fact"), "No fact recorded")
@@ -461,7 +595,10 @@ elif nav_choice == "📊 Evaluation Sessions":
                             st.markdown(f"- **{cat}**: {fact_txt} <span class='citation-tag'>[{cit_id}]</span>", unsafe_allow_html=True)
                 with c_rf2:
                     st.markdown("#### Interview Transcript Signals")
-                    for tf in safe_list(rdata.get("transcript_facts")):
+                    t_facts = safe_list(rdata.get("transcript_facts"))
+                    if not t_facts:
+                        st.caption("No transcript signals extracted.")
+                    for tf in t_facts:
                         if isinstance(tf, dict):
                             q_sum = safe_text(tf.get("question_summary"), "Interview Question")
                             ans_txt = safe_text(tf.get("answer_claim"), "No answer recorded")
@@ -514,6 +651,8 @@ elif nav_choice == "📊 Evaluation Sessions":
                     d_json = {}
 
                 rounds = safe_list(d_json.get("rounds"))
+                if not rounds:
+                    st.caption("No deliberation rounds recorded.")
                 for r_idx, rnd in enumerate(rounds):
                     if not isinstance(rnd, dict):
                         continue
@@ -618,14 +757,19 @@ elif nav_choice == "📊 Evaluation Sessions":
                 st.info("Evidence index not found for this run.")
 
 
-# --- PAGE: HIRING ROOM (MULTI-CANDIDATE MATRIX) ---
-elif nav_choice == "🏢 Hiring Room":
-    st.markdown('<div class="main-header">Hiring Room: Candidate Matrix</div>', unsafe_allow_html=True)
+# =====================================================================
+# VIEW 4: HIRING ROOM (MULTI-CANDIDATE COMPARISON)
+# =====================================================================
+elif st.session_state["current_nav"] == "🏢 Hiring Room":
+    st.markdown('<div class="main-header">Hiring Room: Candidate Comparison Matrix</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Side-by-side comparison matrix for candidates evaluated under the same role.</div>', unsafe_allow_html=True)
 
     evals = list_all_evaluations()
     if not evals:
-        st.info("No candidate evaluations available yet.")
+        st.info("No candidate evaluations available yet. Run an evaluation to view the comparison matrix.")
+        if st.button("🚀 Start Evaluation", type="primary"):
+            set_navigation("🚀 New Evaluation")
+            st.rerun()
     else:
         # Group by job_id
         jobs = list(set([safe_text(e.get("job_id"), "default_job") for e in evals if isinstance(e, dict)]))
@@ -638,7 +782,7 @@ elif nav_choice == "🏢 Hiring Room":
         for je in job_evals:
             rid = safe_text(je.get("run_id"), "unknown_run")
             cid = safe_text(je.get("candidate_id"), "unknown")
-            cname = safe_text(je.get("candidate_name"), cid)
+            cname = safe_text(je.get("candidate_name"), safe_title(cid))
             dec_path = settings.runs_dir / rid / "reports" / f"{cid}_decision.json"
             dec_data = {}
             if dec_path.exists():
@@ -662,8 +806,10 @@ elif nav_choice == "🏢 Hiring Room":
         st.dataframe(matrix_rows, use_container_width=True)
 
 
-# --- PAGE: CANDIDATES DIRECTORY ---
-elif nav_choice == "👥 Candidates Directory":
+# =====================================================================
+# VIEW 5: CANDIDATES DIRECTORY
+# =====================================================================
+elif st.session_state["current_nav"] == "👥 Candidates Directory":
     st.markdown('<div class="main-header">Candidates Directory</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Historical evaluation record across all candidate profiles.</div>', unsafe_allow_html=True)
 
@@ -673,7 +819,7 @@ elif nav_choice == "👥 Candidates Directory":
         if not isinstance(e, dict):
             continue
         cid = safe_text(e.get("candidate_id"), "unknown")
-        cname = safe_text(e.get("candidate_name"), cid)
+        cname = safe_text(e.get("candidate_name"), safe_title(cid))
         job_id = safe_title(e.get("job_id"), "Default Role")
         status_str = safe_upper(e.get("status"), "UNKNOWN")
         run_id = safe_text(e.get("run_id"), "N/A")
@@ -696,8 +842,10 @@ elif nav_choice == "👥 Candidates Directory":
         st.info("No candidates evaluated yet.")
 
 
-# --- PAGE: REPORTS LIBRARY ---
-elif nav_choice == "📄 Reports Library":
+# =====================================================================
+# VIEW 6: REPORTS LIBRARY
+# =====================================================================
+elif st.session_state["current_nav"] == "📄 Reports Library":
     st.markdown('<div class="main-header">Publication Reports Library</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Download official evidence-backed PDF deliberation reports.</div>', unsafe_allow_html=True)
 
@@ -709,7 +857,7 @@ elif nav_choice == "📄 Reports Library":
             continue
         rid = safe_text(e.get("run_id"), "unknown_run")
         cid = safe_text(e.get("candidate_id"), "unknown")
-        cname = safe_text(e.get("candidate_name"), cid)
+        cname = safe_text(e.get("candidate_name"), safe_title(cid))
         job_title = safe_title(e.get("job_id"), "Role")
         created_str = safe_text(e.get("created_at"), "")[:19] or "N/A"
         
