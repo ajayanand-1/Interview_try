@@ -14,6 +14,14 @@ import {
   ArrowLeft,
   ChevronRight,
   ShieldAlert,
+  GitCommit,
+  TrendingUp,
+  UserCheck,
+  UserX,
+  HelpCircle,
+  ArrowRight,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import { api } from '../api/client';
 import {
@@ -24,8 +32,10 @@ import {
   FinalDecision,
 } from '../types/api';
 import { StatusBadge } from '../components/common/StatusBadge';
+import { CitationBadge } from '../components/common/CitationBadge';
+import { CitationModal } from '../components/common/CitationModal';
 
-type TabType = 'overview' | 'rosetta' | 'memos' | 'debate';
+type TabType = 'overview' | 'rosetta' | 'memos' | 'debate' | 'decision_path';
 
 export const EvaluationDetail: React.FC = () => {
   const { run_id } = useParams<{ run_id: string }>();
@@ -37,6 +47,9 @@ export const EvaluationDetail: React.FC = () => {
   const [memos, setMemos] = useState<Record<string, AgentMemo> | null>(null);
   const [debate, setDebate] = useState<DebateTranscript | null>(null);
 
+  // Evidence Explorer Modal state
+  const [selectedCitationId, setSelectedCitationId] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,7 +60,6 @@ export const EvaluationDetail: React.FC = () => {
       const metadata = await api.getEvaluationMetadata(run_id);
       setMeta(metadata);
 
-      // Attempt to load available phase artifacts
       try {
         const dec = await api.getDecision(run_id);
         setDecision(dec);
@@ -78,12 +90,11 @@ export const EvaluationDetail: React.FC = () => {
 
   useEffect(() => {
     loadRunData();
-    // Auto poll if running
     const interval = setInterval(() => {
       if (meta?.status === 'running' || meta?.status === 'queued') {
         loadRunData();
       }
-    }, 3000);
+    }, 2500);
     return () => clearInterval(interval);
   }, [run_id, meta?.status]);
 
@@ -114,7 +125,14 @@ export const EvaluationDetail: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      {/* Breadcrumb & Navigation */}
+      {/* Evidence Explorer Modal */}
+      <CitationModal
+        citationId={selectedCitationId}
+        rosetta={rosetta}
+        onClose={() => setSelectedCitationId(null)}
+      />
+
+      {/* Top Breadcrumb Bar */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-xs text-slate-400">
           <Link to="/evaluations" className="hover:text-white transition-colors">
@@ -154,7 +172,7 @@ export const EvaluationDetail: React.FC = () => {
               {decision && <StatusBadge verdict={decision.final_recommendation} />}
             </div>
             <p className="text-xs text-slate-400 font-mono mt-1">
-              Role: <span className="text-slate-300">{meta.job_id}</span> | Candidate ID:{' '}
+              Target Role: <span className="text-slate-300">{meta.job_id}</span> | Candidate ID:{' '}
               <span className="text-slate-300">{meta.candidate_id}</span> | Run ID:{' '}
               <span className="text-indigo-400">{meta.run_id}</span>
             </p>
@@ -164,13 +182,28 @@ export const EvaluationDetail: React.FC = () => {
             <div>Updated: {new Date(meta.updated_at).toLocaleTimeString()}</div>
           </div>
         </div>
+
+        {/* Phase Progress Bar for active runs */}
+        {meta.status === 'running' && (
+          <div className="mt-5 pt-4 border-t border-slate-800/80">
+            <div className="flex items-center justify-between text-xs text-slate-300 font-mono mb-2">
+              <span className="text-indigo-400 font-semibold animate-pulse">
+                Phase Active: {meta.phase.toUpperCase()}
+              </span>
+              <span className="text-slate-400">Processing multi-agent deliberation...</span>
+            </div>
+            <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+              <div className="bg-indigo-500 h-full w-2/3 animate-pulse rounded-full"></div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-800 pb-px">
+      <div className="flex items-center gap-2 border-b border-slate-800 pb-px overflow-x-auto">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-colors border-b-2 ${
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
             activeTab === 'overview'
               ? 'border-indigo-500 text-indigo-400 bg-indigo-500/5'
               : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -181,7 +214,7 @@ export const EvaluationDetail: React.FC = () => {
         </button>
         <button
           onClick={() => setActiveTab('rosetta')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-colors border-b-2 ${
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
             activeTab === 'rosetta'
               ? 'border-indigo-500 text-indigo-400 bg-indigo-500/5'
               : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -192,25 +225,36 @@ export const EvaluationDetail: React.FC = () => {
         </button>
         <button
           onClick={() => setActiveTab('memos')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-colors border-b-2 ${
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
             activeTab === 'memos'
               ? 'border-indigo-500 text-indigo-400 bg-indigo-500/5'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
           <Layers className="w-4 h-4" />
-          Sealed Memos (4 Personas)
+          Sealed Agent Memos
         </button>
         <button
           onClick={() => setActiveTab('debate')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-colors border-b-2 ${
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
             activeTab === 'debate'
               ? 'border-indigo-500 text-indigo-400 bg-indigo-500/5'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
           <MessageSquare className="w-4 h-4" />
-          Debate Transcript
+          Debate Replay & Deltas
+        </button>
+        <button
+          onClick={() => setActiveTab('decision_path')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
+            activeTab === 'decision_path'
+              ? 'border-indigo-500 text-indigo-400 bg-indigo-500/5'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <GitCommit className="w-4 h-4" />
+          Decision Path Flow
         </button>
       </div>
 
@@ -230,7 +274,7 @@ export const EvaluationDetail: React.FC = () => {
                     {decision.decision_path.original_gs_rationale}
                   </p>
 
-                  {/* Override Motion Block */}
+                  {/* Override Motion Record */}
                   {decision.decision_path.override_motion_filed && decision.decision_path.override_motion && (
                     <div className="mt-4 p-4 rounded-lg bg-amber-500/5 border border-amber-500/20 text-xs">
                       <div className="flex items-center gap-2 text-amber-400 font-semibold mb-1">
@@ -238,13 +282,14 @@ export const EvaluationDetail: React.FC = () => {
                         <span>Override Motion Deliberation</span>
                       </div>
                       <p className="text-slate-300">
-                        <b>Motion filed by:</b> {decision.decision_path.override_motion.filed_by}
+                        <b>Motion filed by:</b>{' '}
+                        <span className="capitalize">{decision.decision_path.override_motion.filed_by.replace(/_/g, ' ')}</span>
                       </p>
                       <p className="text-slate-400 mt-1 italic">
                         "{decision.decision_path.override_motion.motion_text}"
                       </p>
                       <div className="mt-2 text-slate-300">
-                        <b>Supermajority Vote Result:</b>{' '}
+                        <b>Supermajority Vote:</b>{' '}
                         <span className="font-mono text-amber-300">
                           {decision.decision_path.override_motion.support_count}/4 in favor (
                           {decision.decision_path.override_motion.passed ? 'PASSED' : 'FAILED - Motion Rejected'})
@@ -254,19 +299,21 @@ export const EvaluationDetail: React.FC = () => {
                   )}
                 </div>
 
-                {/* Evidence Strengths & Concerns */}
+                {/* Evidence Strengths & Concerns with Clickable Citation Badges */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div className="bg-[#131D31] border border-slate-800 rounded-xl p-5">
                     <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-3">
                       Verified Strengths ({decision.strengths.length})
                     </h4>
-                    <ul className="space-y-2.5 text-xs text-slate-300">
+                    <ul className="space-y-3 text-xs text-slate-300">
                       {decision.strengths.map((s, idx) => (
                         <li key={idx} className="flex items-start gap-2">
-                          <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono text-[10px] shrink-0 border border-emerald-500/20">
-                            {s.citation_id}
-                          </span>
-                          <span>{s.claim}</span>
+                          <CitationBadge
+                            citationId={s.citation_id}
+                            onClick={(cid) => setSelectedCitationId(cid)}
+                            className="shrink-0"
+                          />
+                          <span className="leading-snug">{s.claim}</span>
                         </li>
                       ))}
                     </ul>
@@ -276,13 +323,15 @@ export const EvaluationDetail: React.FC = () => {
                     <h4 className="text-xs font-bold text-rose-400 uppercase tracking-wider mb-3">
                       Verified Concerns ({decision.concerns.length})
                     </h4>
-                    <ul className="space-y-2.5 text-xs text-slate-300">
+                    <ul className="space-y-3 text-xs text-slate-300">
                       {decision.concerns.map((c, idx) => (
                         <li key={idx} className="flex items-start gap-2">
-                          <span className="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 font-mono text-[10px] shrink-0 border border-rose-500/20">
-                            {c.citation_id}
-                          </span>
-                          <span>{c.claim}</span>
+                          <CitationBadge
+                            citationId={c.citation_id}
+                            onClick={(cid) => setSelectedCitationId(cid)}
+                            className="shrink-0"
+                          />
+                          <span className="leading-snug">{c.claim}</span>
                         </li>
                       ))}
                     </ul>
@@ -320,20 +369,20 @@ export const EvaluationDetail: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Evidence Traceability Guarantee Badge */}
+                {/* Evidence Explorer Info Card */}
                 <div className="bg-gradient-to-br from-indigo-950/40 to-slate-900 border border-indigo-500/20 rounded-xl p-5">
                   <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs mb-1">
                     <Award className="w-4 h-4" />
-                    100% Traceability Verified
+                    Evidence Explorer Active
                   </div>
-                  <p className="text-xs text-slate-300">
-                    All {decision.strengths.length + decision.concerns.length} claims in this recommendation map to exact verbatim source citation IDs.
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Click any citation tag (e.g. <code className="text-indigo-400">[T-A7]</code> or <code className="text-cyan-400">[R-EXP-01]</code>) anywhere in the report to inspect the exact verbatim source text and verify evidentiary grounding.
                   </p>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="p-8 text-center text-slate-400 bg-[#131D31] rounded-xl border border-slate-800">
+            <div className="p-10 text-center text-slate-400 bg-[#131D31] rounded-xl border border-slate-800">
               <Clock className="w-6 h-6 mx-auto mb-2 text-indigo-400 animate-spin" />
               <p className="text-sm font-semibold text-white">Evaluation is currently executing...</p>
               <p className="text-xs mt-1">Phase: {meta.phase}. Decision deliverables will appear once debate concludes.</p>
@@ -369,9 +418,15 @@ export const EvaluationDetail: React.FC = () => {
                     </thead>
                     <tbody className="divide-y divide-slate-800/60 font-mono">
                       {Object.entries(rosetta.citations_index).map(([cid, text]) => (
-                        <tr key={cid} className="hover:bg-slate-800/20">
-                          <td className="py-2 px-4 text-indigo-400 font-semibold">{cid}</td>
-                          <td className="py-2 px-4 text-slate-300 font-sans text-xs">{text}</td>
+                        <tr
+                          key={cid}
+                          onClick={() => setSelectedCitationId(cid)}
+                          className="hover:bg-indigo-500/5 cursor-pointer transition-colors"
+                        >
+                          <td className="py-2.5 px-4">
+                            <CitationBadge citationId={cid} onClick={(id) => setSelectedCitationId(id)} />
+                          </td>
+                          <td className="py-2.5 px-4 text-slate-300 font-sans text-xs">{text}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -391,6 +446,13 @@ export const EvaluationDetail: React.FC = () => {
       {/* Tab 3: Sealed Memos */}
       {activeTab === 'memos' && (
         <div className="space-y-6">
+          <div className="bg-[#131D31] border border-slate-800/80 rounded-xl p-4 text-xs text-slate-300 flex items-center gap-2">
+            <Layers className="w-4 h-4 text-indigo-400 shrink-0" />
+            <span>
+              <b>Pre-Debate Isolated Reasoning:</b> Each persona received ONLY the Job Description and Rosetta profile before deliberation.
+            </span>
+          </div>
+
           {memos ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {Object.entries(memos).map(([persona, memo]) => (
@@ -417,9 +479,7 @@ export const EvaluationDetail: React.FC = () => {
                     </span>
                     {memo.strengths.map((s, idx) => (
                       <div key={idx} className="text-xs text-slate-300 flex items-center gap-1.5">
-                        <span className="font-mono text-[10px] text-emerald-400 bg-emerald-500/10 px-1 rounded">
-                          {s.citation_id}
-                        </span>
+                        <CitationBadge citationId={s.citation_id} onClick={(id) => setSelectedCitationId(id)} />
                         <span className="truncate">{s.claim}</span>
                       </div>
                     ))}
@@ -431,13 +491,17 @@ export const EvaluationDetail: React.FC = () => {
                     </span>
                     {memo.gaps.map((g, idx) => (
                       <div key={idx} className="text-xs text-slate-300 flex items-center gap-1.5">
-                        <span className="font-mono text-[10px] text-rose-400 bg-rose-500/10 px-1 rounded">
-                          {g.citation_id}
-                        </span>
+                        <CitationBadge citationId={g.citation_id} onClick={(id) => setSelectedCitationId(id)} />
                         <span className="truncate">{g.claim}</span>
                       </div>
                     ))}
                   </div>
+
+                  {memo.contrarian_argument && (
+                    <div className="p-2.5 rounded bg-amber-500/5 border border-amber-500/20 text-[11px] text-amber-300">
+                      <b>Devil's Advocate Argument:</b> {memo.contrarian_argument}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -450,7 +514,7 @@ export const EvaluationDetail: React.FC = () => {
         </div>
       )}
 
-      {/* Tab 4: Debate Transcript */}
+      {/* Tab 4: Debate Replay & Deliberation Deltas */}
       {activeTab === 'debate' && (
         <div className="space-y-6">
           {debate ? (
@@ -466,7 +530,7 @@ export const EvaluationDetail: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Turns Dialogue */}
+                  {/* Turns Dialogue with Rebuttal Badges */}
                   <div className="space-y-3">
                     {rnd.turns.map((turn, tIdx) => (
                       <div
@@ -478,13 +542,27 @@ export const EvaluationDetail: React.FC = () => {
                         }`}
                       >
                         <div className="flex items-center justify-between mb-1.5">
-                          <span className="font-bold text-white capitalize">{turn.persona.replace(/_/g, ' ')}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-white capitalize">{turn.persona.replace(/_/g, ' ')}</span>
+                            {turn.responds_to && (
+                              <span className="text-[10px] px-2 py-0.5 rounded bg-rose-500/10 text-rose-300 border border-rose-500/20 font-semibold">
+                                Rebutting {turn.responds_to.replace(/_/g, ' ')}
+                              </span>
+                            )}
+                            {turn.is_counter_question_response && (
+                              <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                                Counter-Question Response
+                              </span>
+                            )}
+                          </div>
                           {turn.cites && turn.cites.length > 0 && (
                             <div className="flex items-center gap-1">
                               {turn.cites.map((c) => (
-                                <span key={c} className="font-mono text-[10px] text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded">
-                                  {c}
-                                </span>
+                                <CitationBadge
+                                  key={c}
+                                  citationId={c}
+                                  onClick={(id) => setSelectedCitationId(id)}
+                                />
                               ))}
                             </div>
                           )}
@@ -494,7 +572,22 @@ export const EvaluationDetail: React.FC = () => {
                     ))}
                   </div>
 
-                  {/* Round Votes Grid */}
+                  {/* Deliberation Opinion Shifts Callout (PRD §9) */}
+                  {rnd.score_deltas_from_previous_round && Object.keys(rnd.score_deltas_from_previous_round).length > 0 && (
+                    <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg text-xs space-y-1">
+                      <div className="flex items-center gap-1.5 text-amber-400 font-semibold mb-1">
+                        <TrendingUp className="w-3.5 h-3.5" />
+                        <span>Deliberation Score Shifts (Opinion Changed)</span>
+                      </div>
+                      {Object.entries(rnd.score_deltas_from_previous_round).map(([p, reason]) => (
+                        <div key={p} className="text-slate-300">
+                          <b className="capitalize text-slate-200">{p.replace(/_/g, ' ')}:</b> {reason}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Round Votes Table */}
                   <div className="p-3 bg-[#0B1120] rounded-lg border border-slate-800 flex items-center justify-around font-mono text-xs">
                     {Object.entries(rnd.votes).map(([persona, score]) => (
                       <div key={persona} className="text-center">
@@ -510,6 +603,117 @@ export const EvaluationDetail: React.FC = () => {
             <div className="p-8 text-center text-slate-400 bg-[#131D31] rounded-xl border border-slate-800">
               <Clock className="w-6 h-6 mx-auto mb-2 text-indigo-400 animate-spin" />
               <p className="text-sm font-semibold text-white">Debate Session in Progress...</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab 5: Decision Path Flow Diagram */}
+      {activeTab === 'decision_path' && (
+        <div className="space-y-6">
+          {decision ? (
+            <div className="bg-[#131D31] border border-slate-800 rounded-xl p-6 space-y-6">
+              <div>
+                <h3 className="text-base font-bold text-white">Deliberation & Adjudication Pipeline Flow</h3>
+                <p className="text-xs text-slate-400">
+                  Step-by-step decision pathway from independent sealed memos to final recommendation
+                </p>
+              </div>
+
+              {/* Visual Flow Steps */}
+              <div className="space-y-4 max-w-2xl mx-auto">
+                {/* Step 1 */}
+                <div className="p-4 rounded-xl bg-[#0B1120] border border-slate-800 flex items-center gap-4">
+                  <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs shrink-0">
+                    1
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">Independent Sealed Memos</h4>
+                    <p className="text-xs text-slate-400">4 personas evaluate isolated Rosetta profile facts independently.</p>
+                  </div>
+                </div>
+
+                <div className="flex justify-center text-slate-600">
+                  <ArrowRight className="w-4 h-4 rotate-90" />
+                </div>
+
+                {/* Step 2 */}
+                <div className="p-4 rounded-xl bg-[#0B1120] border border-slate-800 flex items-center gap-4">
+                  <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs shrink-0">
+                    2
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">General Secretary Debate</h4>
+                    <p className="text-xs text-slate-400">Agenda items debated across turns with direct rebuttals and integer voting.</p>
+                  </div>
+                </div>
+
+                <div className="flex justify-center text-slate-600">
+                  <ArrowRight className="w-4 h-4 rotate-90" />
+                </div>
+
+                {/* Step 3 */}
+                <div className="p-4 rounded-xl bg-[#0B1120] border border-indigo-500/30 flex items-center gap-4">
+                  <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                    3
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">General Secretary Recommendation</h4>
+                    <p className="text-xs text-slate-300">
+                      Non-averaging verdict: <b className="text-indigo-400 uppercase">{decision.decision_path.original_gs_decision}</b> (Confidence: {decision.decision_path.original_gs_confidence.toUpperCase()})
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex justify-center text-slate-600">
+                  <ArrowRight className="w-4 h-4 rotate-90" />
+                </div>
+
+                {/* Step 4: Override */}
+                <div className={`p-4 rounded-xl border flex items-center gap-4 ${
+                  decision.decision_path.override_motion_filed
+                    ? 'bg-amber-500/5 border-amber-500/30'
+                    : 'bg-[#0B1120] border-slate-800'
+                }`}>
+                  <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs shrink-0">
+                    4
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">Override Motion Deliberation</h4>
+                    <p className="text-xs text-slate-300">
+                      {decision.decision_path.override_motion_filed
+                        ? `Motion filed by ${decision.decision_path.override_motion?.filed_by}. Result: ${decision.decision_path.override_motion?.support_count}/4 votes (${decision.decision_path.override_motion?.passed ? 'PASSED' : 'FAILED'}).`
+                        : 'No override motion filed by any agent.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex justify-center text-slate-600">
+                  <ArrowRight className="w-4 h-4 rotate-90" />
+                </div>
+
+                {/* Final Step */}
+                <div className={`p-4 rounded-xl border flex items-center gap-4 ${
+                  decision.final_recommendation === 'hire'
+                    ? 'bg-emerald-500/10 border-emerald-500/30'
+                    : 'bg-rose-500/10 border-rose-500/30'
+                }`}>
+                  <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">
+                    5
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">Final Hiring Verdict</h4>
+                    <p className="text-sm font-bold text-white font-mono uppercase">
+                      {decision.final_recommendation} (Confidence: {decision.confidence_level})
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="p-8 text-center text-slate-400 bg-[#131D31] rounded-xl border border-slate-800">
+              <Clock className="w-6 h-6 mx-auto mb-2 text-indigo-400 animate-spin" />
+              <p className="text-sm font-semibold text-white">Generating Decision Path...</p>
             </div>
           )}
         </div>

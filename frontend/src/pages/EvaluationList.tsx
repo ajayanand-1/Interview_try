@@ -1,6 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Layers, PlusCircle, ArrowRight, RefreshCw, AlertCircle } from 'lucide-react';
+import {
+  Layers,
+  PlusCircle,
+  ArrowRight,
+  RefreshCw,
+  AlertCircle,
+  Search,
+  Filter,
+} from 'lucide-react';
 import { api } from '../api/client';
 import { EvaluationSummary } from '../types/api';
 import { StatusBadge } from '../components/common/StatusBadge';
@@ -10,6 +18,9 @@ export const EvaluationList: React.FC = () => {
   const [evaluations, setEvaluations] = useState<EvaluationSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const fetchRuns = async () => {
     try {
@@ -27,6 +38,19 @@ export const EvaluationList: React.FC = () => {
   useEffect(() => {
     fetchRuns();
   }, []);
+
+  const filtered = evaluations.filter((e) => {
+    const matchesSearch =
+      e.candidate_name.toLowerCase().includes(search.toLowerCase()) ||
+      e.candidate_id.toLowerCase().includes(search.toLowerCase()) ||
+      e.job_id.toLowerCase().includes(search.toLowerCase()) ||
+      e.run_id.toLowerCase().includes(search.toLowerCase());
+
+    const matchesStatus =
+      statusFilter === 'all' || e.status.toLowerCase() === statusFilter.toLowerCase();
+
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -54,6 +78,36 @@ export const EvaluationList: React.FC = () => {
         </div>
       </div>
 
+      {/* Filter and Search Bar */}
+      <div className="bg-[#131D31] border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="relative flex-1 max-w-md">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search candidate, job, or run ID..."
+            className="w-full pl-9 pr-3 py-1.5 text-xs bg-[#0B1120] border border-slate-700/60 rounded-lg text-slate-200 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors"
+          />
+        </div>
+
+        <div className="flex items-center gap-2 text-xs">
+          <Filter className="w-3.5 h-3.5 text-slate-400" />
+          <span className="text-slate-400 font-semibold">Status:</span>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="bg-[#0B1120] border border-slate-700/60 rounded-lg px-2.5 py-1 text-slate-200 focus:outline-none focus:border-indigo-500 text-xs"
+          >
+            <option value="all">All States</option>
+            <option value="completed">Completed</option>
+            <option value="running">Running</option>
+            <option value="queued">Queued</option>
+            <option value="failed">Failed</option>
+          </select>
+        </div>
+      </div>
+
       {/* Evaluations Table */}
       <div className="bg-[#131D31] border border-slate-800/80 rounded-xl overflow-hidden shadow-sm">
         {loading ? (
@@ -66,11 +120,11 @@ export const EvaluationList: React.FC = () => {
             <AlertCircle className="w-6 h-6 mx-auto mb-2 opacity-80" />
             <p className="font-medium">{error}</p>
           </div>
-        ) : evaluations.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="p-10">
             <EmptyState
-              title="No evaluation runs found"
-              description="Start a new interview panel evaluation to analyze candidate evidence."
+              title="No evaluation runs match your criteria"
+              description="Adjust search filters or start a new candidate evaluation."
             />
           </div>
         ) : (
@@ -87,7 +141,7 @@ export const EvaluationList: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 font-medium">
-                {evaluations.map((evalItem) => (
+                {filtered.map((evalItem) => (
                   <tr key={evalItem.run_id} className="hover:bg-slate-800/30 transition-colors">
                     <td className="py-3.5 px-5">
                       <div className="font-semibold text-slate-100 text-sm">{evalItem.candidate_name}</div>

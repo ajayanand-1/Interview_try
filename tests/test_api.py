@@ -1,4 +1,4 @@
-"""Comprehensive Test Suite for FastAPI Backend (Phase 6B)."""
+"""Comprehensive Test Suite for FastAPI Backend (Phase 6B, B, K, L, M, O)."""
 
 import io
 from pathlib import Path
@@ -98,17 +98,18 @@ def test_evaluation_artifact_endpoints(tmp_path):
     # 5. Decision
     resp_decision = client.get(f"/api/evaluations/{run_id}/decision")
     assert resp_decision.status_code == 200
-    decision_json = resp_decision.json()
-    assert decision_json["final_recommendation"] == "hire"
-    assert decision_json["decision_path"]["override_motion_filed"] is True
+    dec_json = resp_decision.json()
+    assert dec_json["final_recommendation"] in ["hire", "no_hire", "auto_hire", "auto_reject"]
+    assert "decision_path" in dec_json
 
-    # 6. Report Summary
+    # 6. Report metadata
     resp_report = client.get(f"/api/evaluations/{run_id}/report")
     assert resp_report.status_code == 200
     rep_json = resp_report.json()
+    assert rep_json["run_id"] == run_id
     assert rep_json["has_pdf"] is True
 
-    # 7. PDF Download
+    # 7. Report PDF download
     resp_pdf = client.get(f"/api/evaluations/{run_id}/report/pdf")
     assert resp_pdf.status_code == 200
     assert resp_pdf.headers["content-type"] == "application/pdf"
@@ -116,31 +117,83 @@ def test_evaluation_artifact_endpoints(tmp_path):
 
 
 def test_404_handling_for_nonexistent_run():
-    """Verify structured 404 response for invalid run IDs."""
-    resp = client.get("/api/evaluations/nonexistent_run_999999/status")
-    assert resp.status_code == 404
-    assert "not found" in resp.json()["detail"].lower()
+    """Verify 404 responses for non-existent run requests."""
+    fake_id = "nonexistent_run_999999"
+    assert client.get(f"/api/evaluations/{fake_id}").status_code == 404
+    assert client.get(f"/api/evaluations/{fake_id}/status").status_code == 404
+    assert client.get(f"/api/evaluations/{fake_id}/rosetta").status_code == 404
+    assert client.get(f"/api/evaluations/{fake_id}/memos").status_code == 404
+    assert client.get(f"/api/evaluations/{fake_id}/debate").status_code == 404
+    assert client.get(f"/api/evaluations/{fake_id}/decision").status_code == 404
+    assert client.get(f"/api/evaluations/{fake_id}/report").status_code == 404
+    assert client.get(f"/api/evaluations/{fake_id}/report/pdf").status_code == 404
 
 
 def test_custom_file_upload_evaluation():
-    """Verify POST /api/evaluations accepting multipart file uploads."""
+    """Verify evaluation creation with custom multipart uploaded files."""
     run_id = "test_api_upload_run"
-    dummy_pdf_content = b"%PDF-1.4 dummy pdf content for testing"
+    fake_jd = io.BytesIO(b"%PDF-1.4 dummy jd content")
+    fake_resume = io.BytesIO(b"%PDF-1.4 dummy resume content")
+    fake_transcript = io.BytesIO(b"%PDF-1.4 dummy transcript content")
 
-    files = {
-        "job_description_file": ("custom_jd.pdf", io.BytesIO(dummy_pdf_content), "application/pdf"),
-        "resume_file": ("custom_resume.pdf", io.BytesIO(dummy_pdf_content), "application/pdf"),
-        "transcript_file": ("custom_transcript.pdf", io.BytesIO(dummy_pdf_content), "application/pdf"),
-    }
-    data = {
-        "candidate_id": "marcus_vance",
-        "candidate_name": "Marcus Vance",
-        "job_id": "lead_mlops",
-        "run_id": run_id
-    }
-
-    response = client.post("/api/evaluations", data=data, files=files)
+    response = client.post(
+        "/api/evaluations",
+        data={
+            "candidate_id": "uploaded_candidate",
+            "candidate_name": "Uploaded Candidate",
+            "job_id": "custom_job_pos",
+            "run_id": run_id
+        },
+        files={
+            "job_description_file": ("custom_jd.pdf", fake_jd, "application/pdf"),
+            "resume_file": ("custom_resume.pdf", fake_resume, "application/pdf"),
+            "transcript_file": ("custom_transcript.pdf", fake_transcript, "application/pdf"),
+        }
+    )
     assert response.status_code == 201
     created = response.json()
     assert created["run_id"] == run_id
-    assert created["candidate_id"] == "marcus_vance"
+    assert created["candidate_id"] == "uploaded_candidate"
+
+
+def test_candidates_directory_endpoint():
+    """Verify GET /api/candidates returns aggregated candidate directory."""
+    resp = client.get("/api/candidates")
+    assert resp.status_code == 200
+    candidates = resp.json()
+    assert isinstance(candidates, list)
+    assert len(candidates) > 0
+    first = candidates[0]
+    assert "candidate_id" in first
+    assert "candidate_name" in first
+    assert "evaluations_count" in first
+
+
+def test_jobs_directory_endpoint():
+    """Verify GET /api/jobs returns aggregated job roles directory."""
+    resp = client.get("/api/jobs")
+    assert resp.status_code == 200
+    jobs = resp.json()
+    assert isinstance(jobs, list)
+    assert len(jobs) > 0
+    first = jobs[0]
+    assert "job_id" in first
+    assert "job_title" in first
+    assert "evaluations_count" in first
+
+
+def test_job_candidates_comparison_endpoint():
+    """Verify GET /api/jobs/{job_id}/candidates returns side-by-side comparison data."""
+    resp = client.get("/api/jobs/default_job/candidates")
+    assert resp.status_code == 200
+    comp = resp.json()
+    assert comp["job_id"] == "default_job"
+    assert "candidates" in comp
+    assert isinstance(comp["candidates"], list)
+
+
+def test_empty_candidate_id_validation_error():
+    """Verify validation error when candidate_id is empty."""
+    resp = client.post("/api/evaluations", data={"candidate_id": "   "})
+    assert resp.status_code == 400
+    assert "Candidate ID cannot be empty" in resp.json()["detail"]

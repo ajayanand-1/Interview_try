@@ -87,7 +87,7 @@
         "answer": "I want to be upfront about this — it was based on internal review, not a formal benchmark. A few of us spot-checked a sample of responses before and after the change and it felt clearly better, but I wouldn't want to present that number as something rigorous if it comes up again.",
         "answer_citation_id": "T-A2",
         "is_followup": true,
-        "influenced_by": "T-Q1",
+        "influenced_by": null,
         "self_disclosed_gap": true
       },
       {
@@ -107,7 +107,7 @@
         "answer": "I'd start by reading through your existing planner/executor/reviewer code directly, rather than a general course, since the real failure patterns usually aren't in the docs. Then I'd want to pair with someone on a small bug fix first, before touching the architecture itself.",
         "answer_citation_id": "T-A4",
         "is_followup": true,
-        "influenced_by": "T-Q3",
+        "influenced_by": null,
         "self_disclosed_gap": false
       }
     ],

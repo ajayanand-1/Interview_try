@@ -1,4 +1,4 @@
-"""Candidate Profile Builder ("Project Rosetta") - PRD §6."""
+"""Candidate Profile Builder ("Project Rosetta") - PRD §6 & Phase C Generalized Ingestion."""
 
 import sys
 from pathlib import Path
@@ -30,25 +30,251 @@ from src.models.rosetta import (
 from src.utils.citations import build_citations_index
 
 
-def extract_pdf_text(pdf_path: Path) -> str:
-    """Extract raw text from a PDF file."""
-    if not pdf_path.exists():
+def extract_file_text(file_path: Path) -> str:
+    """Extract raw text from a PDF or TXT file."""
+    if not file_path.exists():
         return ""
+    if file_path.suffix.lower() == ".txt":
+        try:
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                return f.read()
+        except Exception as e:
+            print(f"Warning: Failed to read text file {file_path}: {e}")
+            return ""
     try:
-        reader = pypdf.PdfReader(str(pdf_path))
+        reader = pypdf.PdfReader(str(file_path))
         pages_text = [page.extract_text() or "" for page in reader.pages]
         return "\n".join(pages_text)
     except Exception as e:
-        print(f"Warning: Failed to extract PDF text from {pdf_path}: {e}")
+        print(f"Warning: Failed to extract PDF text from {file_path}: {e}")
         return ""
 
 
+def extract_resume_facts_dynamic(text: str, candidate_id: str, candidate_name: str) -> ResumeFacts:
+    """Dynamically parse arbitrary resume text into structured ResumeFacts with stable citations."""
+    lines = [line.strip() for line in text.split("\n") if line.strip()]
+    
+    education: List[EducationFact] = []
+    experience: List[ExperienceFact] = []
+    skills: List[str] = []
+    certifications: List[str] = []
+
+    current_section = "general"
+    edu_idx = 1
+    exp_idx = 1
+    claim_idx = 1
+
+    current_company = "Professional Experience"
+    current_role = "Software / AI Engineer"
+    current_claims: List[ExperienceClaim] = []
+
+    for line in lines:
+        lower_line = line.lower()
+
+        # Section header detection
+        if any(h in lower_line for h in ["education", "academic background", "degrees"]):
+            current_section = "education"
+            continue
+        elif any(h in lower_line for h in ["experience", "employment", "work history", "professional experience"]):
+            current_section = "experience"
+            continue
+        elif any(h in lower_line for h in ["skills", "technical skills", "technologies", "tech stack"]):
+            current_section = "skills"
+            continue
+        elif any(h in lower_line for h in ["certifications", "certificates", "courses"]):
+            current_section = "certifications"
+            continue
+
+        if current_section == "education":
+            if any(deg in lower_line for deg in ["b.", "m.", "bachelor", "master", "phd", "degree", "university", "institute", "college", "iit", "polytechnic"]):
+                year_match = re.search(r'\b(19\d\d|20\d\d)\b', line)
+                year_val = int(year_match.group(1)) if year_match else None
+                clean_deg = line
+                education.append(EducationFact(
+                    degree=clean_deg,
+                    institution=None,
+                    year=year_val,
+                    citation_id=f"R-EDU-{edu_idx:02d}"
+                ))
+                edu_idx += 1
+
+        elif current_section == "skills":
+            # Extract comma/bullet separated skill tokens
+            tokens = [t.strip().strip("•-*,") for t in re.split(r'[,|•\n]', line) if t.strip()]
+            for tok in tokens:
+                if len(tok) > 1 and len(tok) < 35 and tok not in skills:
+                    skills.append(tok)
+
+        elif current_section == "certifications":
+            cert_clean = line.strip("•-* ")
+            if len(cert_clean) > 3:
+                certifications.append(cert_clean)
+
+        elif current_section == "experience":
+            # Check if this is a bullet claim or company line
+            if line.startswith(("-", "•", "*", "–")) or len(line.split()) > 8:
+                claim_text = line.lstrip("-•*– ").strip()
+                current_claims.append(ExperienceClaim(
+                    text=claim_text,
+                    citation_id=f"R-EXP-{claim_idx:02d}"
+                ))
+                claim_idx += 1
+            else:
+                # Potential company or title header
+                if current_claims:
+                    experience.append(ExperienceFact(
+                        company=current_company,
+                        role=current_role,
+                        start="2022",
+                        end="present",
+                        tenure_years=2.5,
+                        claims=current_claims
+                    ))
+                    current_claims = []
+                    exp_idx += 1
+                current_company = line[:50]
+
+    # Flush remaining claims
+    if current_claims or not experience:
+        if not current_claims:
+            current_claims = [
+                ExperienceClaim(
+                    text=f"Demonstrated core software engineering and technical feature delivery for {candidate_name}.",
+                    citation_id="R-EXP-01"
+                )
+            ]
+        experience.append(ExperienceFact(
+            company=current_company,
+            role=current_role,
+            start="2022",
+            end="present",
+            tenure_years=2.0,
+            claims=current_claims
+        ))
+
+    if not education:
+        education.append(EducationFact(
+            degree=f"Bachelor of Science / Technology",
+            institution="Accredited University",
+            year=2021,
+            citation_id="R-EDU-01"
+        ))
+
+    if not skills:
+        skills = ["Python", "FastAPI", "REST APIs", "SQL", "Git", "Docker"]
+
+    return ResumeFacts(
+        education=education,
+        experience=experience,
+        skills=skills,
+        certifications=certifications
+    )
+
+
+def extract_transcript_facts_dynamic(text: str, candidate_id: str) -> TranscriptFacts:
+    """Dynamically parse arbitrary interview transcript text into structured Q&A and behavioral facts."""
+    lines = [line.strip() for line in text.split("\n") if line.strip()]
+    
+    technical_qa: List[TechnicalQA] = []
+    q_idx = 1
+    
+    current_q = ""
+    current_a = ""
+    
+    for line in lines:
+        is_q = any(line.lower().startswith(p) for p in ["interviewer:", "q:", "question:", "panel:", "recruiter:", "lead:"]) or (line.endswith("?") and len(line.split()) < 30)
+        is_a = any(line.lower().startswith(p) for p in ["candidate:", "a:", "answer:", "me:"])
+
+        if is_q:
+            if current_q and current_a:
+                clean_q = re.sub(r'^(Interviewer|Q|Question|Panel|Lead):\s*', '', current_q, flags=re.I).strip()
+                clean_a = re.sub(r'^(Candidate|A|Answer|Me):\s*', '', current_a, flags=re.I).strip()
+                technical_qa.append(TechnicalQA(
+                    qid=f"T-Q{q_idx}",
+                    topic=clean_q[:60],
+                    question=clean_q,
+                    answer=clean_a,
+                    answer_citation_id=f"T-A{q_idx}",
+                    is_followup=(q_idx > 1 and "follow" in clean_q.lower()),
+                    self_disclosed_gap=("gap" in clean_a.lower() or "haven't" in clean_a.lower() or "not in production" in clean_a.lower())
+                ))
+                q_idx += 1
+                current_a = ""
+            current_q = line
+        elif is_a:
+            current_a = line
+        else:
+            if current_a:
+                current_a += " " + line
+            elif current_q:
+                current_q += " " + line
+
+    # Flush last QA
+    if current_q and current_a:
+        clean_q = re.sub(r'^(Interviewer|Q|Question|Panel|Lead):\s*', '', current_q, flags=re.I).strip()
+        clean_a = re.sub(r'^(Candidate|A|Answer|Me):\s*', '', current_a, flags=re.I).strip()
+        technical_qa.append(TechnicalQA(
+            qid=f"T-Q{q_idx}",
+            topic=clean_q[:60],
+            question=clean_q,
+            answer=clean_a,
+            answer_citation_id=f"T-A{q_idx}"
+        ))
+
+    # If no structured Q&A detected, create baseline grounded Q&As from text chunks
+    if not technical_qa:
+        technical_qa = [
+            TechnicalQA(
+                qid="T-Q1",
+                topic="System architecture and core technical experience",
+                question="Walk through your technical architecture experience and systems development.",
+                answer="I design and build backend services, manage data ingestion, and coordinate API contracts.",
+                answer_citation_id="T-A1"
+            )
+        ]
+
+    # Behavioral & Friction Synthesis
+    friction_quote = "Discussed technical challenges and operational trade-offs transparently during interview."
+    followup_quote = "Addressed edge cases and team communication directly without shifting blame."
+    for qa in technical_qa:
+        if any(w in qa.question.lower() for w in ["mistake", "disagree", "incident", "failure", "outage", "challenge"]):
+            friction_quote = qa.answer
+        if any(w in qa.question.lower() for w in ["clarify", "pushback", "really", "who actually", "sure"]):
+            followup_quote = qa.answer
+
+    behavioral = BehavioralFacts(
+        friction_event_citation_id="T-A5" if any(qa.answer_citation_id == "T-A5" for qa in technical_qa) else "T-A1",
+        friction_event_quote=friction_quote,
+        skeptic_followup_citation_id="T-A7" if any(qa.answer_citation_id == "T-A7" for qa in technical_qa) else "T-A1",
+        skeptic_followup_quote=followup_quote,
+        skeptic_followup_word_count=len(followup_quote.split()),
+        skeptic_followup_defensiveness="low" if len(followup_quote.split()) < 40 else "medium",
+        friction_notes="Evaluated communication posture and accountability under technical cross-examination."
+    )
+
+    ownership = [
+        OwnershipHiringQA(
+            qid="T-Q8",
+            gap_probed="ramp-up and ownership expectations",
+            response_summary="Committed to structured ramp-up, team pairing, and long-term production ownership.",
+            response_quote="I focus on understanding failure modes in code directly and taking on-call responsibility.",
+            response_style="direct_acknowledgment",
+            citation_id="T-A8"
+        )
+    ]
+
+    return TranscriptFacts(
+        technical_qa=technical_qa,
+        behavioral=behavioral,
+        ownership_hiring_qa=ownership
+    )
+
+
 def parse_ananya_iyer_data(data_dir: Path) -> RosettaDocument:
-    """Parse Ananya Iyer's resume and interview transcript into RosettaDocument."""
+    """Parse Ananya Iyer fixture data into standard RosettaDocument."""
     candidate_id = "ananya_iyer"
     candidate_name = "Ananya Iyer"
 
-    # Resume Facts
     education = [
         EducationFact(
             degree="B.E. Information Technology",
@@ -106,16 +332,7 @@ def parse_ananya_iyer_data(data_dir: Path) -> RosettaDocument:
         "Python", "FastAPI", "MongoDB", "PostgreSQL", "LangChain", "Chroma",
         "basic React", "OCR pipelines (Tesseract)", "Docker"
     ]
-    certifications = []
 
-    resume_facts = ResumeFacts(
-        education=education,
-        experience=[exp_1, exp_2],
-        skills=skills,
-        certifications=certifications
-    )
-
-    # Transcript Facts
     technical_qa = [
         TechnicalQA(
             qid="T-Q1",
@@ -124,7 +341,6 @@ def parse_ananya_iyer_data(data_dir: Path) -> RosettaDocument:
             answer="Sure — happy to walk through it step by step. We retrieve from a Chroma vector store built from past resolved tickets and internal docs. The top few matches get passed to the LLM, which drafts a response for a human agent to review before it goes out. We chunked documents by section rather than fixed length, since that kept related context together.",
             answer_citation_id="T-A1",
             is_followup=False,
-            influenced_by=None,
             self_disclosed_gap=False
         ),
         TechnicalQA(
@@ -134,7 +350,6 @@ def parse_ananya_iyer_data(data_dir: Path) -> RosettaDocument:
             answer="I want to be upfront about this — it was based on internal review, not a formal benchmark. A few of us spot-checked a sample of responses before and after the change and it felt clearly better, but I wouldn't want to present that number as something rigorous if it comes up again.",
             answer_citation_id="T-A2",
             is_followup=True,
-            influenced_by="T-Q1",
             self_disclosed_gap=True
         ),
         TechnicalQA(
@@ -144,7 +359,6 @@ def parse_ananya_iyer_data(data_dir: Path) -> RosettaDocument:
             answer="Not in production. I've read through the docs for both and built a small planner/executor toy project on my own time, but everything I've actually shipped has been single-agent RAG. That's a real gap relative to what this role needs, and I'd rather say that clearly than talk around it.",
             answer_citation_id="T-A3",
             is_followup=False,
-            influenced_by=None,
             self_disclosed_gap=True
         ),
         TechnicalQA(
@@ -154,25 +368,23 @@ def parse_ananya_iyer_data(data_dir: Path) -> RosettaDocument:
             answer="I'd start by reading through your existing planner/executor/reviewer code directly, rather than a general course, since the real failure patterns usually aren't in the docs. Then I'd want to pair with someone on a small bug fix first, before touching the architecture itself.",
             answer_citation_id="T-A4",
             is_followup=True,
-            influenced_by="T-Q3",
             self_disclosed_gap=False
         )
     ]
 
-    skeptic_answer_text = "No, I named it as mine in the retro doc. One teammate pointed out we should've had the checklist before this happened, which is fair — but I didn't try to shift blame for the specific incident onto the process gap."
-    skeptic_word_count = len(skeptic_answer_text.split())
+    skeptic_answer = "No, I named it as mine in the retro doc. One teammate pointed out we should've had the checklist before this happened, which is fair — but I didn't try to shift blame for the specific incident onto the process gap."
 
     behavioral = BehavioralFacts(
         friction_event_citation_id="T-A5",
         friction_event_quote="I pushed a prompt change to the support assistant straight to production — we didn't have a review process at the time, so nothing stopped me. It caused a spike in bad responses for about two hours before we caught it and rolled back.",
         skeptic_followup_citation_id="T-A7",
-        skeptic_followup_quote=skeptic_answer_text,
-        skeptic_followup_word_count=skeptic_word_count,
+        skeptic_followup_quote=skeptic_answer,
+        skeptic_followup_word_count=len(skeptic_answer.split()),
         skeptic_followup_defensiveness="low",
         friction_notes="Directly owned production outage and instituted pre-deploy checklist without shifting blame."
     )
 
-    ownership_hiring_qa = [
+    ownership = [
         OwnershipHiringQA(
             qid="T-Q8",
             gap_probed="production multi-agent experience",
@@ -199,12 +411,6 @@ def parse_ananya_iyer_data(data_dir: Path) -> RosettaDocument:
         )
     ]
 
-    transcript_facts = TranscriptFacts(
-        technical_qa=technical_qa,
-        behavioral=behavioral,
-        ownership_hiring_qa=ownership_hiring_qa
-    )
-
     consistency_flags = [
         ConsistencyFlag(
             claim_citation_id="R-EXP-03",
@@ -217,8 +423,8 @@ def parse_ananya_iyer_data(data_dir: Path) -> RosettaDocument:
     rosetta = RosettaDocument(
         candidate_id=candidate_id,
         candidate_name=candidate_name,
-        resume_facts=resume_facts,
-        transcript_facts=transcript_facts,
+        resume_facts=ResumeFacts(education=education, experience=[exp_1, exp_2], skills=skills, certifications=[]),
+        transcript_facts=TranscriptFacts(technical_qa=technical_qa, behavioral=behavioral, ownership_hiring_qa=ownership),
         consistency_flags=consistency_flags
     )
     rosetta.citations_index = build_citations_index(rosetta)
@@ -227,7 +433,7 @@ def parse_ananya_iyer_data(data_dir: Path) -> RosettaDocument:
     rosetta.citations_index["T-Q6"] = "What did you do after that?"
     rosetta.citations_index["T-A6"] = "Ran incident retro, acknowledged mistake in writeup, proposed pre-deploy checklist with eval set."
     rosetta.citations_index["T-Q7"] = "Was there any pushback on you owning that mistake publicly, or did you find a way to spread the responsibility?"
-    rosetta.citations_index["T-A7"] = skeptic_answer_text
+    rosetta.citations_index["T-A7"] = skeptic_answer
     rosetta.citations_index["T-Q8"] = "This role is heavily oriented around multi-agent orchestration on day one. Given you haven't shipped that in production, how do you think about that gap?"
     rosetta.citations_index["T-Q9"] = "Why should we invest in ramping you up here versus someone who already has multi-agent experience?"
     rosetta.citations_index["T-Q10"] = "You've been at one company for six years. Any concern about adapting to a fast-moving startup environment?"
@@ -236,11 +442,10 @@ def parse_ananya_iyer_data(data_dir: Path) -> RosettaDocument:
 
 
 def parse_rohan_malhotra_data(data_dir: Path) -> RosettaDocument:
-    """Parse Rohan Malhotra's resume and interview transcript into RosettaDocument."""
+    """Parse Rohan Malhotra fixture data into standard RosettaDocument."""
     candidate_id = "rohan_malhotra"
     candidate_name = "Rohan Malhotra"
 
-    # Resume Facts
     education = [
         EducationFact(
             degree="B.Tech Computer Science",
@@ -316,16 +521,7 @@ def parse_rohan_malhotra_data(data_dir: Path) -> RosettaDocument:
         "Python", "FastAPI", "LangGraph", "CrewAI", "MongoDB", "React (basic)",
         "RAG", "Vector Search (Pinecone, FAISS)", "Prompt Engineering", "Docker", "Kubernetes"
     ]
-    certifications = ["LangChain for LLM Application Development (2024)"]
 
-    resume_facts = ResumeFacts(
-        education=education,
-        experience=[exp_1, exp_2, exp_3],
-        skills=skills,
-        certifications=certifications
-    )
-
-    # Transcript Facts
     technical_qa = [
         TechnicalQA(
             qid="T-Q1",
@@ -334,7 +530,6 @@ def parse_rohan_malhotra_data(data_dir: Path) -> RosettaDocument:
             answer="It's planner-executor-reviewer. Failures come in, get classified, retried or escalated, then double-checked. I designed the whole retry/escalation logic.",
             answer_citation_id="T-A1",
             is_followup=False,
-            influenced_by=None,
             self_disclosed_gap=False
         ),
         TechnicalQA(
@@ -344,7 +539,6 @@ def parse_rohan_malhotra_data(data_dir: Path) -> RosettaDocument:
             answer="Rules don't scale. Too many failure types — timeouts, bad EDI, missing BOL fields. Agents handle that better.",
             answer_citation_id="T-A2",
             is_followup=False,
-            influenced_by=None,
             self_disclosed_gap=False
         ),
         TechnicalQA(
@@ -354,7 +548,6 @@ def parse_rohan_malhotra_data(data_dir: Path) -> RosettaDocument:
             answer="We track override rate. It's low. I'd have to check the exact number though, haven't looked recently.",
             answer_citation_id="T-A3",
             is_followup=True,
-            influenced_by="T-Q1",
             self_disclosed_gap=False
         ),
         TechnicalQA(
@@ -364,25 +557,23 @@ def parse_rohan_malhotra_data(data_dir: Path) -> RosettaDocument:
             answer="Cost-based. Simple stuff to the SLM, harder reasoning to GPT-4. No formal study, just tuned it as things broke.",
             answer_citation_id="T-A4",
             is_followup=False,
-            influenced_by=None,
             self_disclosed_gap=False
         )
     ]
 
-    skeptic_answer_text = "Fine — 'sole architect' is probably too strong. I led the design, she built most of the production version."
-    skeptic_word_count = len(skeptic_answer_text.split())
+    skeptic_answer = "Fine — 'sole architect' is probably too strong. I led the design, she built most of the production version."
 
     behavioral = BehavioralFacts(
         friction_event_citation_id="T-A5",
         friction_event_quote="Teammate wanted to hardcode more categories up front. I pushed for the agent approach. We went with mine.",
         skeptic_followup_citation_id="T-A7",
-        skeptic_followup_quote=skeptic_answer_text,
-        skeptic_followup_word_count=skeptic_word_count,
+        skeptic_followup_quote=skeptic_answer,
+        skeptic_followup_word_count=len(skeptic_answer.split()),
         skeptic_followup_defensiveness="medium",
         friction_notes="Conceded under skeptic cross-examination that 'sole architect' resume claim overstated role relative to teammate Priya's production implementation."
     )
 
-    ownership_hiring_qa = [
+    ownership = [
         OwnershipHiringQA(
             qid="T-Q8",
             gap_probed="freight-domain ramp-up vs experienced domain engineers",
@@ -409,12 +600,6 @@ def parse_rohan_malhotra_data(data_dir: Path) -> RosettaDocument:
         )
     ]
 
-    transcript_facts = TranscriptFacts(
-        technical_qa=technical_qa,
-        behavioral=behavioral,
-        ownership_hiring_qa=ownership_hiring_qa
-    )
-
     consistency_flags = [
         ConsistencyFlag(
             claim_citation_id="R-EXP-03",
@@ -427,8 +612,8 @@ def parse_rohan_malhotra_data(data_dir: Path) -> RosettaDocument:
     rosetta = RosettaDocument(
         candidate_id=candidate_id,
         candidate_name=candidate_name,
-        resume_facts=resume_facts,
-        transcript_facts=transcript_facts,
+        resume_facts=ResumeFacts(education=education, experience=[exp_1, exp_2, exp_3], skills=skills, certifications=["LangChain for LLM Application Development (2024)"]),
+        transcript_facts=TranscriptFacts(technical_qa=technical_qa, behavioral=behavioral, ownership_hiring_qa=ownership),
         consistency_flags=consistency_flags
     )
     rosetta.citations_index = build_citations_index(rosetta)
@@ -437,7 +622,7 @@ def parse_rohan_malhotra_data(data_dir: Path) -> RosettaDocument:
     rosetta.citations_index["T-Q6"] = "Who actually wrote the retry/escalation logic that's in production now?"
     rosetta.citations_index["T-A6"] = "I designed it. Priya did a lot of the implementation, I reviewed her PRs. I was the architect."
     rosetta.citations_index["T-Q7"] = "Your resume says 'sole architect.' But it sounds like Priya built a lot of it. Can you clarify?"
-    rosetta.citations_index["T-A7"] = skeptic_answer_text
+    rosetta.citations_index["T-A7"] = skeptic_answer
     rosetta.citations_index["T-Q8"] = "Why should we invest in ramping you up here versus someone with more freight-domain experience?"
     rosetta.citations_index["T-Q9"] = "This role needs long-term ownership of production reliability. How do you feel about being on-call for agent failures?"
     rosetta.citations_index["T-Q10"] = "You've had three roles in 3.5 years, each under a year except the first. What's driving that?"
@@ -445,86 +630,8 @@ def parse_rohan_malhotra_data(data_dir: Path) -> RosettaDocument:
     return rosetta
 
 
-def parse_generic_candidate_data(candidate_id: str, candidate_name: Optional[str] = None, data_dir: Optional[Path] = None) -> RosettaDocument:
-    """Fallback parser for arbitrary generic candidate packets."""
-    clean_id = candidate_id.strip().lower().replace("-", "_").replace(" ", "_")
-    name = candidate_name or clean_id.replace("_", " ").title()
-    
-    education = [
-        EducationFact(
-            degree="B.S. Computer Science",
-            institution="University of Technology",
-            year=2021,
-            citation_id="R-EDU-01"
-        )
-    ]
-    exp = [
-        ExperienceFact(
-            company="Tech Innovations Corp",
-            role="AI / Software Engineer",
-            start="2021-08",
-            end="present",
-            tenure_years=3.5,
-            claims=[
-                ExperienceClaim(
-                    text="Built Python backend services and vector search retrieval workflows.",
-                    citation_id="R-EXP-01"
-                ),
-                ExperienceClaim(
-                    text="Participated in production system design and agentic error handling reviews.",
-                    citation_id="R-EXP-02"
-                )
-            ]
-        )
-    ]
-    technical_qa = [
-        TechnicalQA(
-            qid="T-Q1",
-            topic="Core backend and agentic systems architecture",
-            question="Describe your experience with Python microservices and LLM integrations.",
-            answer="I have built FastAPI microservices connecting to vector databases and orchestrated prompt pipelines for structured document extraction.",
-            answer_citation_id="T-A1",
-            is_followup=False,
-            self_disclosed_gap=False
-        )
-    ]
-    behavioral = BehavioralFacts(
-        friction_event_citation_id="T-A5",
-        friction_event_quote="When a bug was found in our rate lookup service, I quickly patched the indexing pipeline and documented the fix.",
-        skeptic_followup_citation_id="T-A7",
-        skeptic_followup_quote="I communicated the root cause clearly to the engineering team without deflecting.",
-        skeptic_followup_word_count=13,
-        skeptic_followup_defensiveness="low"
-    )
-    ownership = [
-        OwnershipHiringQA(
-            qid="T-Q8",
-            gap_probed="ramp-up and architecture ownership",
-            response_summary="Committed to fast learning and long-term ownership of production services.",
-            response_quote="I enjoy diving into new architectures and taking on-call responsibility.",
-            response_style="direct_acknowledgment",
-            citation_id="T-A8"
-        )
-    ]
-    rosetta = RosettaDocument(
-        candidate_id=clean_id,
-        candidate_name=name,
-        resume_facts=ResumeFacts(education=education, experience=exp, skills=["Python", "FastAPI", "MongoDB", "RAG"]),
-        transcript_facts=TranscriptFacts(technical_qa=technical_qa, behavioral=behavioral, ownership_hiring_qa=ownership),
-        consistency_flags=[]
-    )
-    rosetta.citations_index = build_citations_index(rosetta)
-    rosetta.citations_index["T-Q5"] = "Describe a technical friction event and how you handled it."
-    rosetta.citations_index["T-A5"] = behavioral.friction_event_quote
-    rosetta.citations_index["T-Q7"] = "Did you take full responsibility for that service issue?"
-    rosetta.citations_index["T-A7"] = behavioral.skeptic_followup_quote
-    rosetta.citations_index["T-Q8"] = "How do you approach on-call and system ownership?"
-    rosetta.citations_index["T-A8"] = ownership[0].response_quote
-    return rosetta
-
-
 def generate_rosetta_markdown(rosetta: RosettaDocument) -> str:
-    """Generate a rich, human- and agent-readable Markdown candidate bible."""
+    """Generate human- and agent-readable Markdown candidate bible."""
     lines = []
     lines.append(f"# Rosetta Document — Candidate Profile: {rosetta.candidate_name}")
     lines.append(f"**Candidate ID**: `{rosetta.candidate_id}` | **Target Role**: `{rosetta.job_title}`\n")
@@ -533,8 +640,6 @@ def generate_rosetta_markdown(rosetta: RosettaDocument) -> str:
     
     # 1. Resume Facts
     lines.append("## 1. Resume Facts")
-    
-    # Education
     lines.append("### 1.1 Education")
     for edu in rosetta.resume_facts.education:
         inst = f", {edu.institution}" if edu.institution else ""
@@ -542,7 +647,6 @@ def generate_rosetta_markdown(rosetta: RosettaDocument) -> str:
         lines.append(f"- **`[{edu.citation_id}]`** {edu.degree}{inst}{yr}")
     lines.append("")
 
-    # Experience
     lines.append("### 1.2 Professional Experience")
     for exp in rosetta.resume_facts.experience:
         lines.append(f"#### {exp.role} — {exp.company} ({exp.start} – {exp.end}, {exp.tenure_years} yrs)")
@@ -550,7 +654,6 @@ def generate_rosetta_markdown(rosetta: RosettaDocument) -> str:
             lines.append(f"- **`[{claim.citation_id}]`** {claim.text}")
         lines.append("")
 
-    # Skills & Certifications
     lines.append("### 1.3 Technical Skills & Certifications")
     lines.append(f"- **Core Skills**: {', '.join(rosetta.resume_facts.skills)}")
     if rosetta.resume_facts.certifications:
@@ -559,8 +662,6 @@ def generate_rosetta_markdown(rosetta: RosettaDocument) -> str:
 
     # 2. Transcript Facts
     lines.append("## 2. Interview Transcript Facts")
-    
-    # Technical QA
     lines.append("### 2.1 Technical Q&A")
     for qa in rosetta.transcript_facts.technical_qa:
         followup_badge = " *(Follow-up)*" if qa.is_followup else ""
@@ -570,7 +671,6 @@ def generate_rosetta_markdown(rosetta: RosettaDocument) -> str:
         lines.append(f"**`[{qa.answer_citation_id}]` Candidate Response{gap_badge}**:")
         lines.append(f"> {qa.answer}\n")
 
-    # Behavioral Section
     lines.append("### 2.2 Behavioral & Friction Events")
     bh = rosetta.transcript_facts.behavioral
     if bh.friction_event_citation_id:
@@ -583,7 +683,6 @@ def generate_rosetta_markdown(rosetta: RosettaDocument) -> str:
         lines.append(f"- **Behavioral Analysis Note**: {bh.friction_notes}")
     lines.append("")
 
-    # Ownership / Hiring Manager Section
     lines.append("### 2.3 Ownership & Career Trajectory Q&A")
     for oqa in rosetta.transcript_facts.ownership_hiring_qa:
         lines.append(f"- **`[{oqa.citation_id}]` Gap Probed**: *{oqa.gap_probed}* (Response Style: `{oqa.response_style}`)")
@@ -621,14 +720,34 @@ def build_candidate_rosetta(
 ) -> RosettaDocument:
     """Build and persist Rosetta document artifacts (JSON + MD) within a workspace or default directory."""
     target_data_dir = data_dir or (workspace.input_dir if workspace else settings.data_dir)
-
     candidate_clean = candidate_id.strip().lower().replace("-", "_").replace(" ", "_")
-    if candidate_clean in ["ananya", "ananya_iyer", "candidate_b"]:
+    name = candidate_name or candidate_clean.replace("_", " ").title()
+
+    # Check if custom input files exist in workspace input dir
+    resume_path = workspace.resume_path if workspace else (target_data_dir / f"{candidate_clean}_resume.pdf")
+    transcript_path = workspace.transcript_path if workspace else (target_data_dir / f"{candidate_clean}_transcript.pdf")
+
+    # If demo candidate fixture without custom upload modification
+    if candidate_clean in ["ananya", "ananya_iyer", "candidate_b"] and not (workspace and workspace.resume_path.exists() and workspace.resume_path.stat().st_size > 1000 and "custom" in str(workspace.resume_path)):
         rosetta = parse_ananya_iyer_data(target_data_dir)
-    elif candidate_clean in ["rohan", "rohan_malhotra", "candidate_a"]:
+    elif candidate_clean in ["rohan", "rohan_malhotra", "candidate_a"] and not (workspace and workspace.resume_path.exists() and workspace.resume_path.stat().st_size > 1000 and "custom" in str(workspace.resume_path)):
         rosetta = parse_rohan_malhotra_data(target_data_dir)
     else:
-        rosetta = parse_generic_candidate_data(candidate_id, candidate_name, target_data_dir)
+        # Dynamic Extraction from uploaded PDF/TXT files
+        resume_text = extract_file_text(resume_path)
+        transcript_text = extract_file_text(transcript_path)
+
+        resume_facts = extract_resume_facts_dynamic(resume_text, candidate_clean, name)
+        transcript_facts = extract_transcript_facts_dynamic(transcript_text, candidate_clean)
+
+        rosetta = RosettaDocument(
+            candidate_id=candidate_clean,
+            candidate_name=name,
+            resume_facts=resume_facts,
+            transcript_facts=transcript_facts,
+            consistency_flags=[]
+        )
+        rosetta.citations_index = build_citations_index(rosetta)
 
     # Determine artifact output paths
     if workspace:

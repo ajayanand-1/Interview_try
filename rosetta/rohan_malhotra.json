@@ -118,7 +118,7 @@
         "answer": "We track override rate. It's low. I'd have to check the exact number though, haven't looked recently.",
         "answer_citation_id": "T-A3",
         "is_followup": true,
-        "influenced_by": "T-Q1",
+        "influenced_by": null,
         "self_disclosed_gap": false
       },
       {

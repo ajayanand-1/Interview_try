@@ -70,6 +70,51 @@ export const api = {
 
   getReportPdfUrl: (runId: string) => `${API_BASE}/api/evaluations/${runId}/report/pdf`,
 
+  getCandidates: () =>
+    request<
+      Array<{
+        candidate_id: string;
+        candidate_name: string;
+        evaluations_count: number;
+        latest_status: string;
+        latest_run_id: string;
+        latest_job_id: string;
+        latest_date: string;
+        runs: EvaluationSummary[];
+      }>
+    >('/api/candidates'),
+
+  getJobs: () =>
+    request<
+      Array<{
+        job_id: string;
+        job_title: string;
+        evaluations_count: number;
+        candidates: string[];
+        runs: EvaluationSummary[];
+      }>
+    >('/api/jobs'),
+
+  getJobCandidatesComparison: (jobId: string) =>
+    request<{
+      job_id: string;
+      job_title: string;
+      total_candidates: number;
+      candidates: Array<{
+        run_id: string;
+        candidate_id: string;
+        candidate_name: string;
+        status: string;
+        phase: string;
+        created_at: string;
+        recommendation?: string | null;
+        confidence?: string | null;
+        strengths_count: number;
+        concerns_count: number;
+        scores: Record<string, number | null>;
+      }>;
+    }>(`/api/jobs/${jobId}/candidates`),
+
   createEvaluation: async (formData: FormData): Promise<EvaluationSummary> => {
     return request<EvaluationSummary>('/api/evaluations', {
       method: 'POST',

@@ -1,5 +1,6 @@
-"""FastAPI Main Application Entrypoint for Project Rosetta (Phase 6B)."""
+"""FastAPI Main Application Entrypoint for Project Rosetta (Phase 6B & Production)."""
 
+import os
 import sys
 from pathlib import Path
 
@@ -20,16 +21,21 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS Configuration for local React / Vite frontend development
+# CORS Configuration for local React frontend + production deployments
+custom_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
+allowed_origins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+    "*"
+]
+if custom_origins and any(custom_origins):
+    allowed_origins.extend([o.strip() for o in custom_origins if o.strip()])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-        "*"
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
