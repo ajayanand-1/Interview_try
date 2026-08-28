@@ -296,7 +296,22 @@ st.sidebar.markdown("---")
 evals_all = list_all_evaluations()
 st.sidebar.metric("Total Evaluations", len(evals_all))
 st.sidebar.metric("Active Personas", "4 Isolated")
-st.sidebar.caption("🟢 Core Engine v1.0 Online")
+
+# Live LLM Status / Configuration in Sidebar
+with st.sidebar.expander("🔑 Gemini API Configuration", expanded=False):
+    current_key = os.environ.get("GEMINI_API_KEY", "") or os.environ.get("GOOGLE_API_KEY", "")
+    if current_key:
+        masked_k = f"{current_key[:6]}...{current_key[-4:]}"
+        st.success(f"🟢 **Live Gemini Engine Active** (`gemini-3.6-flash`)\nKey: `{masked_k}`")
+    else:
+        st.info("⚪ **Grounded Evaluation Mode**\nEnter your Gemini API key below to activate live multi-agent reasoning:")
+
+    input_k = st.text_input("Enter API Key", type="password", placeholder="AIzaSy... / AQ.Ab8...", key="sidebar_key_input")
+    if st.button("Apply API Key", use_container_width=True):
+        if input_k.strip():
+            os.environ["GEMINI_API_KEY"] = input_k.strip()
+            st.success("API key updated!")
+            st.rerun()
 
 
 # =====================================================================

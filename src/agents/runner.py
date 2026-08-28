@@ -1,5 +1,6 @@
 """Runner for isolated, independent agent evaluation sessions (PRD §7, §8, §12)."""
 
+import os
 import json
 import re
 from typing import Dict, Any, Optional, Tuple
@@ -296,20 +297,23 @@ def call_gemini_agent(
         persona, rosetta, job_description_text
     )
 
-    api_key = settings.gemini_api_key
+    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or settings.gemini_api_key
     if not api_key:
         # Fallback for deterministic / offline evaluation
         return generate_grounded_memo_fallback(persona, rosetta)
 
-    # Attempt live API call via google-genai / google.generativeai with 1 retry per PRD §12
-    for attempt in range(2):
+    models_to_try = [settings.gemini_model, "gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"]
+    seen_models = set()
+    ordered_models = [m for m in models_to_try if not (m in seen_models or seen_models.add(m))]
+
+    for model_name in ordered_models:
         try:
             from google import genai
             from google.genai import types
             
             client = genai.Client(api_key=api_key)
             response = client.models.generate_content(
-                model=settings.gemini_model,
+                model=model_name,
                 contents=user_prompt,
                 config=types.GenerateContentConfig(
                     system_instruction=system_inst,
@@ -317,14 +321,19 @@ def call_gemini_agent(
                     temperature=0.2,
                 )
             )
-            raw_text = response.text
+            raw_text = (response.text or "").strip()
+            if raw_text.startswith("```json"):
+                raw_text = raw_text[7:]
+            if raw_text.startswith("```"):
+                raw_text = raw_text[3:]
+            if raw_text.endswith("```"):
+                raw_text = raw_text[:-3]
+            raw_text = raw_text.strip()
+            
             data = json.loads(raw_text)
             memo = AgentMemo.model_validate(data)
             return memo
         except Exception as e:
-            if attempt == 0:
-                continue # Retry once
-            print(f"Warning: Gemini API call failed on retry for {persona}: {e}. Using grounded fallback.")
-            return generate_grounded_memo_fallback(persona, rosetta)
+            continue
 
     return generate_grounded_memo_fallback(persona, rosetta)

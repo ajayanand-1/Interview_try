@@ -12,8 +12,8 @@ load_dotenv(BASE_DIR / ".env")
 
 
 class Settings(BaseSettings):
-    gemini_api_key: Optional[str] = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-    gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    gemini_api_key: Optional[str] = None
+    gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
     
     # Base directory paths
     base_dir: Path = BASE_DIR
