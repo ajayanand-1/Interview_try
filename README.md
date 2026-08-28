@@ -62,7 +62,7 @@ npm run dev
 
 ## 🧪 Testing
 
-Run the full automated test suite (40 unit, integration, API, debate, decision, isolation, and workspace tests):
+Run the full automated test suite (47 unit, integration, API, debate, decision, isolation, and workspace tests):
 
 ```bash
 ./.venv/bin/pytest -v
@@ -75,18 +75,50 @@ cd frontend && npm run build
 
 ---
 
-## ☁️ Cloud Deployment (Render)
+## ☁️ Google Cloud Run Deployment
 
-This repository includes a `render.yaml` specification for instant free-tier deployment on Render:
+Deploy directly from source to **Google Cloud Run** using the CLI:
 
-1. **Backend Web Service (`promptwars-api`)**:
-   - Environment: Python 3.11
-   - Build Command: `pip install -r requirements.txt`
-   - Start Command: `uvicorn src.api.main:app --host 0.0.0.0 --port $PORT`
-2. **Frontend Static Site (`promptwars-ui`)**:
-   - Build Command: `cd frontend && npm install && npm run build`
-   - Publish Directory: `frontend/dist`
-   - Environment Variable: `VITE_API_BASE_URL=https://promptwars-api.onrender.com`
+```bash
+# 1. Login and select your project
+gcloud auth login
+gcloud config set project YOUR_GCP_PROJECT_ID
+
+# 2. Deploy to Cloud Run
+gcloud run deploy promptwars \
+  --source . \
+  --region asia-south1 \
+  --platform managed \
+  --allow-unauthenticated \
+  --port 8080 \
+  --set-env-vars GEMINI_API_KEY="your-gemini-api-key"
+```
+
+---
+
+## 🎬 3–5 Minute Hackathon Presentation Demo Script
+
+1. **Dashboard (`/`)**:
+   - Open the web application. Show the live **Core Engine Online** indicator and system metrics.
+2. **Launch Multi-Candidate Evaluation (`/evaluations/new`)**:
+   - Highlight universal candidate support.
+   - Click the preset **"Batch: Both Candidates (1 Job + 2 Candidates)"** button or drag-and-drop custom PDFs.
+   - Click **Start Batch (2 Candidates)**.
+3. **Inspect Evaluation Run (`/evaluations/:run_id`)**:
+   - Show the live phase progression (*Ingestion* $\rightarrow$ *Rosetta* $\rightarrow$ *Agents* $\rightarrow$ *Debate* $\rightarrow$ *Decision* $\rightarrow$ *Report*).
+   - **Tab 1: Verdict & Overview**: Point out the General Secretary non-averaging synthesis and the Override Motion deliberation box.
+   - **Tab 2: Rosetta Bible**: Show the indexed facts and the master citation lookup table.
+   - **Tab 3: Sealed Agent Memos**: Show the 4 independent pre-debate persona memos and the HR / Culture Devil's Advocate contrarian argument.
+   - **Tab 4: Debate Replay & Deltas**: Show the turns with rebuttal badges and the **"Deliberation Score Shifts (Opinion Changed)"** box showing dynamic vote movement during cross-examination.
+   - **Tab 5: Decision Path Flow**: Walk through the visual flowchart from isolated memos to final verdict.
+4. **Interactive Evidence Explorer**:
+   - Click any citation badge (e.g. `[T-A7]` or `[R-EXP-01]`).
+   - The **Evidence Explorer Modal** displays the exact verbatim quote and the personas citing it, proving **100% citation traceability**.
+5. **Multi-Candidate Hiring Room (`/jobs`)**:
+   - Open `/jobs` and select `AI ENGINEER FREIGHT`.
+   - View the side-by-side comparison matrix comparing Ananya vs. Rohan across persona scores, strengths, and concerns.
+6. **Download Report (`/reports`)**:
+   - Click **Download PDF** to inspect the final deliverable.
 
 ---
 
