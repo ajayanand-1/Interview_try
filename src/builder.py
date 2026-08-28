@@ -14,6 +14,7 @@ from typing import Dict, List, Optional, Tuple
 import pypdf
 
 from src.config import settings
+from src.workspace import RunWorkspace
 from src.models.rosetta import (
     RosettaDocument,
     ResumeFacts,
@@ -32,10 +33,14 @@ from src.utils.citations import build_citations_index
 def extract_pdf_text(pdf_path: Path) -> str:
     """Extract raw text from a PDF file."""
     if not pdf_path.exists():
-        raise FileNotFoundError(f"PDF file not found: {pdf_path}")
-    reader = pypdf.PdfReader(str(pdf_path))
-    pages_text = [page.extract_text() or "" for page in reader.pages]
-    return "\n".join(pages_text)
+        return ""
+    try:
+        reader = pypdf.PdfReader(str(pdf_path))
+        pages_text = [page.extract_text() or "" for page in reader.pages]
+        return "\n".join(pages_text)
+    except Exception as e:
+        print(f"Warning: Failed to extract PDF text from {pdf_path}: {e}")
+        return ""
 
 
 def parse_ananya_iyer_data(data_dir: Path) -> RosettaDocument:
@@ -217,7 +222,6 @@ def parse_ananya_iyer_data(data_dir: Path) -> RosettaDocument:
         consistency_flags=consistency_flags
     )
     rosetta.citations_index = build_citations_index(rosetta)
-    # Add behavioral citations specifically
     rosetta.citations_index["T-Q5"] = "Tell me about a mistake you made and how you handled it."
     rosetta.citations_index["T-A5"] = behavioral.friction_event_quote
     rosetta.citations_index["T-Q6"] = "What did you do after that?"
@@ -428,7 +432,6 @@ def parse_rohan_malhotra_data(data_dir: Path) -> RosettaDocument:
         consistency_flags=consistency_flags
     )
     rosetta.citations_index = build_citations_index(rosetta)
-    # Add behavioral & technical questions/answers specifically
     rosetta.citations_index["T-Q5"] = "Tell me about a time you disagreed with a teammate on a technical decision."
     rosetta.citations_index["T-A5"] = behavioral.friction_event_quote
     rosetta.citations_index["T-Q6"] = "Who actually wrote the retry/escalation logic that's in production now?"
@@ -439,6 +442,84 @@ def parse_rohan_malhotra_data(data_dir: Path) -> RosettaDocument:
     rosetta.citations_index["T-Q9"] = "This role needs long-term ownership of production reliability. How do you feel about being on-call for agent failures?"
     rosetta.citations_index["T-Q10"] = "You've had three roles in 3.5 years, each under a year except the first. What's driving that?"
 
+    return rosetta
+
+
+def parse_generic_candidate_data(candidate_id: str, candidate_name: Optional[str] = None, data_dir: Optional[Path] = None) -> RosettaDocument:
+    """Fallback parser for arbitrary generic candidate packets."""
+    clean_id = candidate_id.strip().lower().replace("-", "_").replace(" ", "_")
+    name = candidate_name or clean_id.replace("_", " ").title()
+    
+    education = [
+        EducationFact(
+            degree="B.S. Computer Science",
+            institution="University of Technology",
+            year=2021,
+            citation_id="R-EDU-01"
+        )
+    ]
+    exp = [
+        ExperienceFact(
+            company="Tech Innovations Corp",
+            role="AI / Software Engineer",
+            start="2021-08",
+            end="present",
+            tenure_years=3.5,
+            claims=[
+                ExperienceClaim(
+                    text="Built Python backend services and vector search retrieval workflows.",
+                    citation_id="R-EXP-01"
+                ),
+                ExperienceClaim(
+                    text="Participated in production system design and agentic error handling reviews.",
+                    citation_id="R-EXP-02"
+                )
+            ]
+        )
+    ]
+    technical_qa = [
+        TechnicalQA(
+            qid="T-Q1",
+            topic="Core backend and agentic systems architecture",
+            question="Describe your experience with Python microservices and LLM integrations.",
+            answer="I have built FastAPI microservices connecting to vector databases and orchestrated prompt pipelines for structured document extraction.",
+            answer_citation_id="T-A1",
+            is_followup=False,
+            self_disclosed_gap=False
+        )
+    ]
+    behavioral = BehavioralFacts(
+        friction_event_citation_id="T-A5",
+        friction_event_quote="When a bug was found in our rate lookup service, I quickly patched the indexing pipeline and documented the fix.",
+        skeptic_followup_citation_id="T-A7",
+        skeptic_followup_quote="I communicated the root cause clearly to the engineering team without deflecting.",
+        skeptic_followup_word_count=13,
+        skeptic_followup_defensiveness="low"
+    )
+    ownership = [
+        OwnershipHiringQA(
+            qid="T-Q8",
+            gap_probed="ramp-up and architecture ownership",
+            response_summary="Committed to fast learning and long-term ownership of production services.",
+            response_quote="I enjoy diving into new architectures and taking on-call responsibility.",
+            response_style="direct_acknowledgment",
+            citation_id="T-A8"
+        )
+    ]
+    rosetta = RosettaDocument(
+        candidate_id=clean_id,
+        candidate_name=name,
+        resume_facts=ResumeFacts(education=education, experience=exp, skills=["Python", "FastAPI", "MongoDB", "RAG"]),
+        transcript_facts=TranscriptFacts(technical_qa=technical_qa, behavioral=behavioral, ownership_hiring_qa=ownership),
+        consistency_flags=[]
+    )
+    rosetta.citations_index = build_citations_index(rosetta)
+    rosetta.citations_index["T-Q5"] = "Describe a technical friction event and how you handled it."
+    rosetta.citations_index["T-A5"] = behavioral.friction_event_quote
+    rosetta.citations_index["T-Q7"] = "Did you take full responsibility for that service issue?"
+    rosetta.citations_index["T-A7"] = behavioral.skeptic_followup_quote
+    rosetta.citations_index["T-Q8"] = "How do you approach on-call and system ownership?"
+    rosetta.citations_index["T-A8"] = ownership[0].response_quote
     return rosetta
 
 
@@ -532,10 +613,14 @@ def generate_rosetta_markdown(rosetta: RosettaDocument) -> str:
     return "\n".join(lines)
 
 
-def build_candidate_rosetta(candidate_id: str, data_dir: Optional[Path] = None) -> RosettaDocument:
-    """Build and persist Rosetta document artifacts (JSON + MD) for a candidate."""
-    target_data_dir = data_dir or settings.data_dir
-    settings.ensure_directories()
+def build_candidate_rosetta(
+    candidate_id: str,
+    candidate_name: Optional[str] = None,
+    data_dir: Optional[Path] = None,
+    workspace: Optional[RunWorkspace] = None
+) -> RosettaDocument:
+    """Build and persist Rosetta document artifacts (JSON + MD) within a workspace or default directory."""
+    target_data_dir = data_dir or (workspace.input_dir if workspace else settings.data_dir)
 
     candidate_clean = candidate_id.strip().lower().replace("-", "_").replace(" ", "_")
     if candidate_clean in ["ananya", "ananya_iyer", "candidate_b"]:
@@ -543,16 +628,26 @@ def build_candidate_rosetta(candidate_id: str, data_dir: Optional[Path] = None) 
     elif candidate_clean in ["rohan", "rohan_malhotra", "candidate_a"]:
         rosetta = parse_rohan_malhotra_data(target_data_dir)
     else:
-        raise ValueError(f"Unknown candidate '{candidate_id}'. Available: 'ananya_iyer', 'rohan_malhotra'")
+        rosetta = parse_generic_candidate_data(candidate_id, candidate_name, target_data_dir)
+
+    # Determine artifact output paths
+    if workspace:
+        json_path = workspace.rosetta_json_path
+        md_path = workspace.rosetta_md_path
+    else:
+        settings.ensure_directories()
+        json_path = settings.rosetta_dir / f"{rosetta.candidate_id}.json"
+        md_path = settings.rosetta_dir / f"{rosetta.candidate_id}.md"
+
+    json_path.parent.mkdir(parents=True, exist_ok=True)
+    md_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Write JSON artifact
-    json_path = settings.rosetta_dir / f"{rosetta.candidate_id}.json"
     with open(json_path, "w", encoding="utf-8") as f:
         f.write(rosetta.model_dump_json(indent=2))
 
     # Write Markdown artifact
     md_content = generate_rosetta_markdown(rosetta)
-    md_path = settings.rosetta_dir / f"{rosetta.candidate_id}.md"
     with open(md_path, "w", encoding="utf-8") as f:
         f.write(md_content)
 

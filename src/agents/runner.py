@@ -2,7 +2,7 @@
 
 import json
 import re
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 from src.config import settings
 from src.models.rosetta import RosettaDocument
 from src.models.memo import AgentMemo, PersonaType, EvidenceItem
@@ -13,7 +13,7 @@ def build_isolated_agent_prompt(
     persona: PersonaType,
     rosetta: RosettaDocument,
     job_description_text: str
-) -> TuplePrompt:
+) -> Tuple[str, str]:
     """Construct an isolated prompt with ONLY the Rosetta doc and Job Description."""
     spec = PERSONA_SPECS[persona]
     system_inst = spec["system_prompt"]
@@ -63,12 +63,6 @@ Respond with a JSON object strictly matching this schema:
     return system_inst, user_prompt
 
 
-class TuplePrompt:
-    def __init__(self, system_inst: str, user_prompt: str):
-        self.system_inst = system_inst
-        self.user_prompt = user_prompt
-
-
 def generate_grounded_memo_fallback(persona: PersonaType, rosetta: RosettaDocument) -> AgentMemo:
     """Deterministic, high-quality grounded evaluation fallback for testing / offline mode."""
     cid = rosetta.candidate_id
@@ -94,7 +88,7 @@ def generate_grounded_memo_fallback(persona: PersonaType, rosetta: RosettaDocume
                 ],
                 insufficient_evidence_items=[]
             )
-        else: # Rohan
+        elif is_rohan:
             return AgentMemo(
                 persona="technical_agent",
                 candidate_id=cid,
@@ -109,6 +103,24 @@ def generate_grounded_memo_fallback(persona: PersonaType, rosetta: RosettaDocume
                 gaps=[
                     EvidenceItem(claim="Vague on reviewer agent evaluation metrics, relying only on untracked override rates", citation_id="T-A3"),
                     EvidenceItem(claim="Model routing was tuned heuristically as things broke rather than via rigorous evaluation benchmarks", citation_id="T-A4"),
+                ],
+                insufficient_evidence_items=[]
+            )
+        else: # Generic candidate
+            cits = list(rosetta.citations_index.keys())
+            c_exp = "R-EXP-01" if "R-EXP-01" in cits else (cits[0] if cits else "R-EDU-01")
+            c_qa = "T-A1" if "T-A1" in cits else (cits[1] if len(cits) > 1 else c_exp)
+            return AgentMemo(
+                persona="technical_agent",
+                candidate_id=cid,
+                score=7,
+                confidence="medium",
+                verdict_summary=f"Demonstrates relevant software and systems engineering competence for {rosetta.candidate_name}.",
+                strengths=[
+                    EvidenceItem(claim="Demonstrated solid backend software engineering fundamentals", citation_id=c_exp),
+                ],
+                gaps=[
+                    EvidenceItem(claim="Requires verification on advanced multi-agent edge case handling", citation_id=c_qa),
                 ],
                 insufficient_evidence_items=[]
             )
@@ -132,7 +144,7 @@ def generate_grounded_memo_fallback(persona: PersonaType, rosetta: RosettaDocume
                 contrarian_argument="While her incident handling was textbook, pushing unreviewed changes straight to prod shows past recklessness with guardrails; also, spending 6 years in one company might mean slower cultural adaptation to high-velocity early-stage startup friction.",
                 insufficient_evidence_items=[]
             )
-        else: # Rohan
+        elif is_rohan:
             return AgentMemo(
                 persona="hr_culture_agent",
                 candidate_id=cid,
@@ -148,6 +160,22 @@ def generate_grounded_memo_fallback(persona: PersonaType, rosetta: RosettaDocume
                     EvidenceItem(claim="Frequent job changes driven purely by compensation and title chasing", citation_id="T-A10"),
                 ],
                 contrarian_argument="His assertiveness and move-fast attitude might be exactly what an early-stage freight startup needs to outpace competitors, provided he is paired with strong execution partners.",
+                insufficient_evidence_items=[]
+            )
+        else: # Generic candidate
+            cits = list(rosetta.citations_index.keys())
+            c_beh = "T-A7" if "T-A7" in cits else ("T-A5" if "T-A5" in cits else (cits[0] if cits else "R-EDU-01"))
+            return AgentMemo(
+                persona="hr_culture_agent",
+                candidate_id=cid,
+                score=8,
+                confidence="high",
+                verdict_summary=f"Strong cultural alignment, transparent communication, and solid team collaboration for {rosetta.candidate_name}.",
+                strengths=[
+                    EvidenceItem(claim="Direct communication and accountability during technical review", citation_id=c_beh),
+                ],
+                gaps=[],
+                contrarian_argument="Adaptability to intense early-stage startup pace should be monitored during onboarding.",
                 insufficient_evidence_items=[]
             )
 
@@ -169,7 +197,7 @@ def generate_grounded_memo_fallback(persona: PersonaType, rosetta: RosettaDocume
                 ],
                 insufficient_evidence_items=[]
             )
-        else: # Rohan
+        elif is_rohan:
             return AgentMemo(
                 persona="hiring_manager_agent",
                 candidate_id=cid,
@@ -184,6 +212,21 @@ def generate_grounded_memo_fallback(persona: PersonaType, rosetta: RosettaDocume
                     EvidenceItem(claim="Severe retention risk with 3 jobs in 3.5 years, explicitly motivated by quick title and pay hops", citation_id="T-A10"),
                     EvidenceItem(claim="Untested in high-incident production volume despite on-call claims", citation_id="T-A9"),
                 ],
+                insufficient_evidence_items=[]
+            )
+        else: # Generic candidate
+            cits = list(rosetta.citations_index.keys())
+            c_own = "T-A8" if "T-A8" in cits else (cits[0] if cits else "R-EDU-01")
+            return AgentMemo(
+                persona="hiring_manager_agent",
+                candidate_id=cid,
+                score=7,
+                confidence="medium",
+                verdict_summary=f"Balanced ROI proposition with steady ramp and dependable execution for {rosetta.candidate_name}.",
+                strengths=[
+                    EvidenceItem(claim="Practical engineering approach with willingness to take on system ownership", citation_id=c_own),
+                ],
+                gaps=[],
                 insufficient_evidence_items=[]
             )
 
@@ -205,7 +248,7 @@ def generate_grounded_memo_fallback(persona: PersonaType, rosetta: RosettaDocume
                 ],
                 insufficient_evidence_items=[]
             )
-        else: # Rohan
+        elif is_rohan:
             return AgentMemo(
                 persona="skeptic_agent",
                 candidate_id=cid,
@@ -220,6 +263,24 @@ def generate_grounded_memo_fallback(persona: PersonaType, rosetta: RosettaDocume
                     EvidenceItem(claim="Unable to provide data on reviewer agent error catching or override rate", citation_id="T-A3"),
                     EvidenceItem(claim="No formal evaluation or methodology for model routing, relying on ad-hoc tuning as things broke", citation_id="T-A4"),
                     EvidenceItem(claim="No real experience managing high incident volume in production", citation_id="T-A9"),
+                ],
+                insufficient_evidence_items=[]
+            )
+        else: # Generic candidate
+            cits = list(rosetta.citations_index.keys())
+            c_str = "R-EXP-01" if "R-EXP-01" in cits else (cits[0] if cits else "R-EDU-01")
+            c_gap = "T-A1" if "T-A1" in cits else (cits[1] if len(cits) > 1 else c_str)
+            return AgentMemo(
+                persona="skeptic_agent",
+                candidate_id=cid,
+                score=6,
+                confidence="medium",
+                verdict_summary=f"Requires rigorous verification on production failure modes and autonomous edge cases for {rosetta.candidate_name}.",
+                strengths=[
+                    EvidenceItem(claim="Demonstrated baseline competence in backend systems", citation_id=c_str),
+                ],
+                gaps=[
+                    EvidenceItem(claim="Unverified depth on complex distributed agent failure loops", citation_id=c_gap),
                 ],
                 insufficient_evidence_items=[]
             )

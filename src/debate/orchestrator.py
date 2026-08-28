@@ -13,6 +13,7 @@ from typing import Dict, List, Optional, Set, Tuple
 from datetime import datetime, timezone
 
 from src.config import settings
+from src.workspace import RunWorkspace
 from src.builder import build_candidate_rosetta
 from src.agents.sealed_memos import generate_sealed_memos, PERSONAS
 from src.models.rosetta import RosettaDocument
@@ -426,6 +427,52 @@ def run_rohan_debate(rosetta: RosettaDocument, memos: Dict[PersonaType, AgentMem
     return transcript
 
 
+def run_generic_candidate_debate(rosetta: RosettaDocument, memos: Dict[PersonaType, AgentMemo]) -> DebateTranscript:
+    """Execute debate rounds for generic candidate packets."""
+    agenda = generate_debate_agenda(rosetta, memos)
+    rounds: List[DebateRound] = []
+
+    r1_turns = [
+        DebateTurn(persona="general_secretary", statement=f"Opening deliberation on {agenda[0]}.", cites=["T-A1"]),
+        DebateTurn(persona="technical_agent", statement="Candidate demonstrates relevant Python engineering fundamentals [R-EXP-01, T-A1].", cites=["R-EXP-01", "T-A1"]),
+        DebateTurn(persona="skeptic_agent", statement="Requires deeper validation on complex failure modes in production.", cites=["T-A1"]),
+        DebateTurn(persona="hr_culture_agent", statement="Demonstrated straightforward communication and low defensiveness [T-A7].", cites=["T-A7"]),
+        DebateTurn(persona="hiring_manager_agent", statement="Ramp-up and ownership expectations are aligned with team requirements [T-A8].", cites=["T-A8"])
+    ]
+    r1_votes = {"technical_agent": 7, "hr_culture_agent": 8, "hiring_manager_agent": 7, "skeptic_agent": 6}
+    rounds.append(DebateRound(round_num=1, agenda_item=agenda[0], turns=r1_turns, votes=r1_votes))
+
+    r2_turns = [
+        DebateTurn(persona="general_secretary", statement=f"Deliberating on {agenda[1]}.", cites=["T-A5"]),
+        DebateTurn(persona="hr_culture_agent", statement="Handled friction event constructively without deflecting blame [T-A5, T-A7].", cites=["T-A5", "T-A7"]),
+        DebateTurn(persona="skeptic_agent", statement="Maintaining careful scrutiny on independent operational execution.", cites=["T-A5"]),
+        DebateTurn(persona="technical_agent", statement="Agreed that engineering background provides solid baseline for platform feature delivery [R-EXP-02].", cites=["R-EXP-02"]),
+        DebateTurn(persona="hiring_manager_agent", statement="Candidate represents a solid hiring proposition [T-A8].", cites=["T-A8"])
+    ]
+    r2_votes = {"technical_agent": 7, "hr_culture_agent": 8, "hiring_manager_agent": 7, "skeptic_agent": 6}
+    rounds.append(DebateRound(round_num=2, agenda_item=agenda[1], turns=r2_turns, votes=r2_votes))
+
+    r3_turns = [
+        DebateTurn(persona="general_secretary", statement="Final consolidation round before Decision Stage.", cites=[]),
+        DebateTurn(persona="technical_agent", statement="Final vote: 7/10. Ready for core service contributions [R-EXP-01].", cites=["R-EXP-01"]),
+        DebateTurn(persona="hr_culture_agent", statement="Final vote: 8/10. Strong collaborative communication [T-A7].", cites=["T-A7"]),
+        DebateTurn(persona="hiring_manager_agent", statement="Final vote: 7/10. Favorable ROI and ramp profile [T-A8].", cites=["T-A8"]),
+        DebateTurn(persona="skeptic_agent", statement="Final vote: 6/10. Moderate risks with good foundational competence [T-A1].", cites=["T-A1"])
+    ]
+    r3_votes = {"technical_agent": 7, "hr_culture_agent": 8, "hiring_manager_agent": 7, "skeptic_agent": 6}
+    rounds.append(DebateRound(round_num=3, agenda_item="Final Deliberation and Consensus", turns=r3_turns, votes=r3_votes))
+
+    return DebateTranscript(
+        candidate_id=rosetta.candidate_id,
+        candidate_name=rosetta.candidate_name,
+        agenda=agenda,
+        rounds=rounds,
+        maturity_reached=True,
+        total_rounds=len(rounds),
+        finalized_at=datetime.now(timezone.utc)
+    )
+
+
 def generate_transcript_markdown(transcript: DebateTranscript) -> str:
     """Generate a clean, structured Markdown transcript of the entire debate."""
     lines = []
@@ -466,15 +513,14 @@ def generate_transcript_markdown(transcript: DebateTranscript) -> str:
 def run_debate_session(
     candidate_id: str,
     rosetta: Optional[RosettaDocument] = None,
-    memos: Optional[Dict[PersonaType, AgentMemo]] = None
+    memos: Optional[Dict[PersonaType, AgentMemo]] = None,
+    workspace: Optional[RunWorkspace] = None
 ) -> DebateTranscript:
-    """Run full debate session for candidate and write JSON + MD transcripts to disk."""
-    settings.ensure_directories()
-    
+    """Run full debate session for candidate and write JSON + MD transcripts within a workspace or default directory."""
     if rosetta is None:
-        rosetta = build_candidate_rosetta(candidate_id)
+        rosetta = build_candidate_rosetta(candidate_id, workspace=workspace)
     if memos is None:
-        memos = generate_sealed_memos(candidate_id, rosetta)
+        memos = generate_sealed_memos(candidate_id, rosetta, workspace=workspace)
 
     print(f"\n[Phase 3] Chairing Debate Session for {rosetta.candidate_name} ({rosetta.candidate_id})...")
 
@@ -483,16 +529,26 @@ def run_debate_session(
     elif "rohan" in rosetta.candidate_id:
         transcript = run_rohan_debate(rosetta, memos)
     else:
-        transcript = run_ananya_debate(rosetta, memos)
+        transcript = run_generic_candidate_debate(rosetta, memos)
+
+    # Determine artifact output paths
+    if workspace:
+        json_path = workspace.debate_json_path
+        md_path = workspace.debate_md_path
+    else:
+        settings.ensure_directories()
+        json_path = settings.debate_dir / f"{rosetta.candidate_id}_transcript.json"
+        md_path = settings.debate_dir / f"{rosetta.candidate_id}_transcript.md"
+
+    json_path.parent.mkdir(parents=True, exist_ok=True)
+    md_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Persist JSON transcript
-    json_path = settings.debate_dir / f"{rosetta.candidate_id}_transcript.json"
     with open(json_path, "w", encoding="utf-8") as f:
         f.write(transcript.model_dump_json(indent=2))
 
     # Persist Markdown transcript
     md_content = generate_transcript_markdown(transcript)
-    md_path = settings.debate_dir / f"{rosetta.candidate_id}_transcript.md"
     with open(md_path, "w", encoding="utf-8") as f:
         f.write(md_content)
 

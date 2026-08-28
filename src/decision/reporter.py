@@ -16,6 +16,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib import colors
 
 from src.config import settings
+from src.workspace import RunWorkspace
 from src.builder import build_candidate_rosetta
 from src.agents.sealed_memos import generate_sealed_memos
 from src.debate.orchestrator import run_debate_session
@@ -298,43 +299,52 @@ def generate_candidate_report_artifacts(
     rosetta: Optional[RosettaDocument] = None,
     memos: Optional[Dict[PersonaType, AgentMemo]] = None,
     transcript: Optional[DebateTranscript] = None,
-    report_data: Optional[FinalReportData] = None
+    report_data: Optional[FinalReportData] = None,
+    workspace: Optional[RunWorkspace] = None
 ) -> Tuple[FinalReportData, Path, Path, Path]:
-    """Generate all final report deliverables (JSON, PDF, Markdown) on disk."""
-    settings.ensure_directories()
-    
+    """Generate all final report deliverables (JSON, PDF, Markdown) on disk within a workspace or default directory."""
     if rosetta is None:
-        rosetta = build_candidate_rosetta(candidate_id)
+        rosetta = build_candidate_rosetta(candidate_id, workspace=workspace)
     if memos is None:
-        memos = generate_sealed_memos(candidate_id, rosetta)
+        memos = generate_sealed_memos(candidate_id, rosetta, workspace=workspace)
     if transcript is None:
-        transcript = run_debate_session(candidate_id, rosetta, memos)
+        transcript = run_debate_session(candidate_id, rosetta, memos, workspace=workspace)
     if report_data is None:
-        report_data = synthesize_candidate_decision(candidate_id, rosetta, memos, transcript)
+        report_data = synthesize_candidate_decision(candidate_id, rosetta, memos, transcript, workspace=workspace)
+
+    # Determine artifact output paths
+    if workspace:
+        json_path = workspace.decision_json_path
+        md_path = workspace.report_md_path
+        pdf_path = workspace.report_pdf_path
+    else:
+        settings.ensure_directories()
+        json_path = settings.reports_dir / f"{rosetta.candidate_id}_decision.json"
+        md_path = settings.reports_dir / f"{rosetta.candidate_id}_final_report.md"
+        pdf_path = settings.reports_dir / f"{rosetta.candidate_id}_final_report.pdf"
+
+        # Legacy aliases
+        with open(settings.reports_dir / "decision.json", "w", encoding="utf-8") as f:
+            f.write(report_data.model_dump_json(indent=2))
+        with open(settings.reports_dir / "final_report.md", "w", encoding="utf-8") as f:
+            f.write(generate_markdown_report(report_data, rosetta, transcript))
+        generate_pdf_report(report_data, rosetta, transcript, settings.reports_dir / "final_report.pdf")
+
+    json_path.parent.mkdir(parents=True, exist_ok=True)
+    md_path.parent.mkdir(parents=True, exist_ok=True)
+    pdf_path.parent.mkdir(parents=True, exist_ok=True)
 
     # 1. Write JSON artifact
-    json_path = settings.reports_dir / f"{rosetta.candidate_id}_decision.json"
     with open(json_path, "w", encoding="utf-8") as f:
-        f.write(report_data.model_dump_json(indent=2))
-
-    # Alias JSON
-    with open(settings.reports_dir / "decision.json", "w", encoding="utf-8") as f:
         f.write(report_data.model_dump_json(indent=2))
 
     # 2. Write Markdown artifact
     md_content = generate_markdown_report(report_data, rosetta, transcript)
-    md_path = settings.reports_dir / f"{rosetta.candidate_id}_final_report.md"
     with open(md_path, "w", encoding="utf-8") as f:
         f.write(md_content)
 
-    # Alias Markdown
-    with open(settings.reports_dir / "final_report.md", "w", encoding="utf-8") as f:
-        f.write(md_content)
-
     # 3. Write PDF artifact
-    pdf_path = settings.reports_dir / f"{rosetta.candidate_id}_final_report.pdf"
     generate_pdf_report(report_data, rosetta, transcript, pdf_path)
-    generate_pdf_report(report_data, rosetta, transcript, settings.reports_dir / "final_report.pdf")
 
     # Validate Traceability
     valid_citations = set(rosetta.citations_index.keys())

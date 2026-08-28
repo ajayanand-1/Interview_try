@@ -13,6 +13,7 @@ from typing import Dict, List, Optional
 import pypdf
 
 from src.config import settings
+from src.workspace import RunWorkspace
 from src.builder import build_candidate_rosetta
 from src.models.rosetta import RosettaDocument
 from src.models.memo import AgentMemo, PersonaType
@@ -29,26 +30,31 @@ PERSONAS: List[PersonaType] = [
 ]
 
 
-def load_job_description_text() -> str:
+def load_job_description_text(jd_path: Optional[Path] = None) -> str:
     """Read the job description text from PDF."""
-    jd_path = settings.data_dir / "job_description.pdf"
-    if not jd_path.exists():
+    target_path = jd_path or (settings.data_dir / "job_description.pdf")
+    if not target_path.exists():
         return "Job Description: AI Engineer — Agentic Systems (Freight Operations) at Cargonet AI."
-    reader = pypdf.PdfReader(str(jd_path))
-    return "\n".join([page.extract_text() or "" for page in reader.pages])
+    try:
+        reader = pypdf.PdfReader(str(target_path))
+        return "\n".join([page.extract_text() or "" for page in reader.pages])
+    except Exception as e:
+        print(f"Warning: Could not read JD PDF at {target_path}: {e}")
+        return "Job Description: AI Engineer — Agentic Systems at Cargonet AI."
 
 
 def generate_sealed_memos(
     candidate_id: str,
-    rosetta: Optional[RosettaDocument] = None
+    rosetta: Optional[RosettaDocument] = None,
+    workspace: Optional[RunWorkspace] = None
 ) -> Dict[PersonaType, AgentMemo]:
-    """Generate all four isolated sealed memos for a candidate and persist to disk."""
-    settings.ensure_directories()
-    
+    """Generate all four isolated sealed memos for a candidate within a workspace or default directory."""
     if rosetta is None:
-        rosetta = build_candidate_rosetta(candidate_id)
+        rosetta = build_candidate_rosetta(candidate_id, workspace=workspace)
         
-    jd_text = load_job_description_text()
+    jd_path = workspace.job_description_path if workspace else None
+    jd_text = load_job_description_text(jd_path)
+    
     memos: Dict[PersonaType, AgentMemo] = {}
     valid_citations = set(rosetta.citations_index.keys())
 
@@ -65,20 +71,28 @@ def generate_sealed_memos(
 
         memos[persona] = memo
 
+        # Determine output paths
+        if workspace:
+            json_path = workspace.memo_json_path(persona)
+            pdf_path = workspace.memo_pdf_path(persona)
+        else:
+            settings.ensure_directories()
+            json_path = settings.memos_dir / f"{candidate_id}_{persona}.json"
+            pdf_path = settings.memos_dir / f"{candidate_id}_{persona}.pdf"
+            
+            # Legacy alias files
+            alias_json = settings.memos_dir / f"{persona}.json"
+            with open(alias_json, "w", encoding="utf-8") as f:
+                f.write(memo.model_dump_json(indent=2))
+            export_memo_to_pdf(memo, settings.memos_dir / f"{persona}.pdf")
+
         # Write candidate-prefixed JSON artifact
-        json_path = settings.memos_dir / f"{candidate_id}_{persona}.json"
+        json_path.parent.mkdir(parents=True, exist_ok=True)
         with open(json_path, "w", encoding="utf-8") as f:
             f.write(memo.model_dump_json(indent=2))
 
         # Write candidate-prefixed PDF artifact
-        pdf_path = settings.memos_dir / f"{candidate_id}_{persona}.pdf"
         export_memo_to_pdf(memo, pdf_path)
-
-        # Write alias files (memos/{persona}.json and memos/{persona}.pdf)
-        alias_json = settings.memos_dir / f"{persona}.json"
-        with open(alias_json, "w", encoding="utf-8") as f:
-            f.write(memo.model_dump_json(indent=2))
-        export_memo_to_pdf(memo, settings.memos_dir / f"{persona}.pdf")
 
         score_str = str(memo.score) if memo.score is not None else "N/A"
         print(f"   ✓ Sealed {persona:22s} | Score: {score_str:>3s}/10 | Conf: {memo.confidence:6s} | Strengths: {len(memo.strengths)} | Gaps: {len(memo.gaps)}")
