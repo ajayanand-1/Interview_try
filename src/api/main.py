@@ -1,4 +1,4 @@
-"""FastAPI Unified Application Entrypoint for Project Rosetta & Production Deployments (Koyeb / Cloud)."""
+"""FastAPI Unified Application Entrypoint for Project Rosetta & Production Deployments."""
 
 import os
 import sys
@@ -47,7 +47,7 @@ app.add_middleware(
 )
 
 
-@app.get("/api/health", tags=["Health"])
+@app.api_route("/api/health", methods=["GET", "HEAD"], tags=["Health"])
 async def health_check():
     """Health check endpoint."""
     return {
@@ -66,8 +66,8 @@ if FRONTEND_DIST.exists() and (FRONTEND_DIST / "assets").exists():
     app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="assets")
 
 
-# SPA Catch-all and static root handlers
-@app.get("/", include_in_schema=False)
+# SPA Catch-all and static root handlers (supports both GET and HEAD)
+@app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
 async def serve_root():
     """Serve SPA index.html or API welcome message."""
     index_path = FRONTEND_DIST / "index.html"
@@ -84,7 +84,7 @@ async def serve_root():
     )
 
 
-@app.get("/{full_path:path}", include_in_schema=False)
+@app.api_route("/{full_path:path}", methods=["GET", "HEAD"], include_in_schema=False)
 async def serve_spa(full_path: str, request: Request):
     """Serve SPA pages for non-API routes or return 404 for unknown /api/ paths."""
     if full_path.startswith("api/") or full_path in ["docs", "openapi.json", "redoc"]:

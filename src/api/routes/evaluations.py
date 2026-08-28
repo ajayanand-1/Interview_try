@@ -1,4 +1,4 @@
-"""API routes for Evaluation management, batch uploads, candidate and job queries (Phase 6B & Phase B/K/O)."""
+"""API routes for Evaluation management, batch uploads, candidate and job queries."""
 
 import json
 import shutil
@@ -39,7 +39,6 @@ async def create_evaluation(
         )
 
     try:
-        # Create run-scoped workspace
         workspace = RunWorkspace.create(
             candidate_id=candidate_id,
             candidate_name=candidate_name,
@@ -47,7 +46,6 @@ async def create_evaluation(
             run_id=run_id
         )
 
-        # Handle uploaded custom files if provided
         if job_description_file and job_description_file.filename:
             target_jd = workspace.input_dir / "job_description.pdf"
             with open(target_jd, "wb") as f:
@@ -66,10 +64,7 @@ async def create_evaluation(
                 shutil.copyfileobj(transcript_file.file, f)
             workspace.transcript_path = target_trn
 
-        # Persist initial status
         initial_status = save_status(workspace, status="queued", phase="ingestion")
-
-        # Dispatch background pipeline execution
         background_tasks.add_task(execute_evaluation_pipeline, workspace)
 
         return {
@@ -203,14 +198,17 @@ async def get_evaluation_report(run_id: str):
     with open(ws.decision_json_path, "r", encoding="utf-8") as f:
         decision_data = json.load(f)
 
+    has_pdf = ws.report_pdf_path.exists() or (ws.reports_dir.exists() and len(list(ws.reports_dir.glob("*.pdf"))) > 0)
+    has_md = ws.report_md_path.exists() or (ws.reports_dir.exists() and len(list(ws.reports_dir.glob("*.md"))) > 0)
+
     return {
         "run_id": run_id,
         "candidate_id": ws.candidate_id,
         "candidate_name": ws.candidate_name,
         "decision": decision_data,
         "pdf_download_url": f"/api/evaluations/{run_id}/report/pdf",
-        "has_pdf": ws.report_pdf_path.exists(),
-        "has_markdown": ws.report_md_path.exists()
+        "has_pdf": has_pdf,
+        "has_markdown": has_md
     }
 
 
@@ -218,20 +216,29 @@ async def get_evaluation_report(run_id: str):
 async def download_evaluation_pdf(run_id: str):
     """Download the final publication-quality PDF report."""
     ws = get_workspace_for_run(run_id)
-    if not ws or not ws.report_pdf_path.exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"PDF report for run '{run_id}' does not exist."
+    if ws and ws.report_pdf_path.exists():
+        return FileResponse(
+            path=str(ws.report_pdf_path),
+            media_type="application/pdf",
+            filename=f"{ws.candidate_id}_final_report.pdf"
         )
+    
+    if ws and ws.reports_dir.exists():
+        pdfs = list(ws.reports_dir.glob("*.pdf"))
+        if pdfs:
+            return FileResponse(
+                path=str(pdfs[0]),
+                media_type="application/pdf",
+                filename=pdfs[0].name
+            )
 
-    return FileResponse(
-        path=str(ws.report_pdf_path),
-        media_type="application/pdf",
-        filename=f"{ws.candidate_id}_final_report.pdf"
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"PDF report for run '{run_id}' does not exist."
     )
 
 
-# --- CANDIDATES & JOBS DIRECTORY API (Phases K, L, M) ---
+# --- CANDIDATES & JOBS DIRECTORY API ---
 
 @router.get("/candidates")
 async def get_candidates_directory():
@@ -286,7 +293,7 @@ async def get_jobs_directory():
 
 @router.get("/jobs/{job_id}/candidates")
 async def get_job_candidates_comparison(job_id: str):
-    """Return candidate runs for a specific job with comparison metrics for the Hiring Room (Phase K)."""
+    """Return candidate runs for a specific job with comparison metrics for the Hiring Room."""
     evals = list_all_evaluations()
     job_runs = [e for e in evals if e["job_id"] == job_id]
     
