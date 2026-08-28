@@ -8,6 +8,7 @@ import json
 import shutil
 from pathlib import Path
 from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 import streamlit as st
 
 # Ensure repository root is on sys.path
@@ -32,6 +33,59 @@ from src.debate.orchestrator import run_debate_session
 from src.decision.engine import synthesize_candidate_decision
 from src.decision.reporter import generate_candidate_report_artifacts
 from src.api.services.evaluation_service import list_all_evaluations, save_status, load_status
+
+
+# --- DEFENSIVE DATA NORMALIZATION HELPERS ---
+
+def safe_text(value: Any, fallback: str = "Not available") -> str:
+    """Safely convert any value to non-empty string with fallback."""
+    if value is None:
+        return fallback
+    s = str(value).strip()
+    return s if s else fallback
+
+
+def safe_upper(value: Any, fallback: str = "NOT AVAILABLE") -> str:
+    """Safely convert value to uppercase string."""
+    if value is None:
+        return fallback
+    s = str(value).strip()
+    return s.upper() if s else fallback
+
+
+def safe_lower(value: Any, fallback: str = "not available") -> str:
+    """Safely convert value to lowercase string."""
+    if value is None:
+        return fallback
+    s = str(value).strip()
+    return s.lower() if s else fallback
+
+
+def safe_title(value: Any, fallback: str = "Not Available") -> str:
+    """Safely convert value to title-cased string replacing underscores."""
+    if value is None:
+        return fallback
+    s = str(value).replace("_", " ").strip()
+    return s.title() if s else fallback
+
+
+def safe_list(value: Any) -> list:
+    """Safely cast value to list."""
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, (tuple, set)):
+        return list(value)
+    return [value]
+
+
+def safe_dict(value: Any) -> dict:
+    """Safely cast value to dict."""
+    if isinstance(value, dict):
+        return value
+    return {}
+
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -237,7 +291,7 @@ if nav_choice == "🚀 New Evaluation":
     num_candidates = st.number_input("Number of Candidates in this Batch", min_value=1, max_value=5, value=2 if st.session_state.get("preset_both") else 1)
 
     candidate_configs = []
-    for i in range(num_candidates):
+    for i in range(int(num_candidates)):
         with st.expander(f"Candidate #{i+1} Configuration", expanded=True):
             cc1, cc2 = st.columns(2)
             default_id = "ananya_iyer" if (i == 0 and (st.session_state.get("preset_ananya") or st.session_state.get("preset_both"))) else ("rohan_malhotra" if (i == 1 or st.session_state.get("preset_rohan")) else f"candidate_{i+1}")
@@ -251,8 +305,8 @@ if nav_choice == "🚀 New Evaluation":
                 trn_f = st.file_uploader(f"Candidate #{i+1} Interview Transcript (PDF/TXT)", type=["pdf", "txt"], key=f"trn_{i}")
             
             candidate_configs.append({
-                "id": c_id.strip(),
-                "name": c_name.strip(),
+                "id": c_id.strip() if c_id else f"candidate_{i+1}",
+                "name": c_name.strip() if c_name else f"Candidate {i+1}",
                 "res": res_f,
                 "trn": trn_f
             })
@@ -270,7 +324,7 @@ if nav_choice == "🚀 New Evaluation":
             
             ws = run_single_evaluation(
                 candidate_id=cfg["id"],
-                candidate_name=cfg["name"] or cfg["id"].replace("_", " ").title(),
+                candidate_name=cfg["name"] or safe_title(cfg["id"]),
                 job_id=job_id_input,
                 jd_file=jd_file,
                 resume_file=cfg["res"],
@@ -295,32 +349,35 @@ elif nav_choice == "📊 Evaluation Sessions":
     if not evals:
         st.info("No evaluation runs recorded yet. Start a new evaluation to inspect results.")
     else:
-        run_ids = [e["run_id"] for e in evals]
+        run_ids = [safe_text(e.get("run_id")) for e in evals if e.get("run_id")]
         selected_run = st.selectbox("Select Evaluation Run to Inspect", run_ids, index=0)
 
         # Load workspace data for selected run
         run_dir = settings.runs_dir / selected_run
-        st_data = load_status(selected_run)
+        st_data = safe_dict(load_status(selected_run))
         
-        cid = st_data.get("candidate_id", "unknown") if st_data else "unknown"
-        cname = st_data.get("candidate_name", cid.replace("_", " ").title()) if st_data else cid.replace("_", " ").title()
-        jid = st_data.get("job_id", "default_job") if st_data else "default_job"
+        cid = safe_text(st_data.get("candidate_id"), "unknown")
+        cname = safe_text(st_data.get("candidate_name"), safe_title(cid))
+        jid = safe_text(st_data.get("job_id"), "default_job")
 
         # Check for decision data
         decision_file = run_dir / "reports" / f"{cid}_decision.json"
         decision_data = {}
         if decision_file.exists():
-            with open(decision_file, "r", encoding="utf-8") as f:
-                decision_data = json.load(f)
+            try:
+                with open(decision_file, "r", encoding="utf-8") as f:
+                    decision_data = safe_dict(json.load(f))
+            except Exception:
+                decision_data = {}
 
         # Top Banner Summary
         b_col1, b_col2, b_col3, b_col4 = st.columns(4)
         with b_col1:
             st.metric("Candidate", cname)
         with b_col2:
-            st.metric("Target Role", jid.replace("_", " ").title())
+            st.metric("Target Role", safe_title(jid))
         with b_col3:
-            rec = decision_data.get("final_recommendation", "PENDING").upper()
+            rec = safe_upper(decision_data.get("final_recommendation"), "PENDING")
             if rec == "HIRE":
                 st.markdown('<div class="hire-badge">RECOMMENDATION: HIRE</div>', unsafe_allow_html=True)
             elif rec == "NO_HIRE":
@@ -328,7 +385,7 @@ elif nav_choice == "📊 Evaluation Sessions":
             else:
                 st.info(f"STATUS: {rec}")
         with b_col4:
-            st.metric("Confidence Level", (decision_data.get("confidence_level") or "N/A").upper())
+            st.metric("Confidence Level", safe_upper(decision_data.get("confidence_level"), "N/A"))
 
         st.markdown("---")
 
@@ -339,53 +396,79 @@ elif nav_choice == "📊 Evaluation Sessions":
 
         with tab_verdict:
             st.markdown("### General Secretary Adjudication Synthesis")
-            dp = decision_data.get("decision_path", {})
-            st.write(dp.get("original_gs_rationale", "No rationale recorded."))
+            dp = safe_dict(decision_data.get("decision_path"))
+            st.write(safe_text(dp.get("original_gs_rationale"), "No rationale recorded."))
 
-            ov = dp.get("override_motion")
-            if ov and ov.get("filed_by"):
-                st.warning(f"**Override Motion Filed by {ov['filed_by'].replace('_', ' ').title()}**: {ov['motion_text']}")
+            ov = safe_dict(dp.get("override_motion"))
+            if ov.get("filed_by"):
+                filed_by_persona = safe_title(ov.get("filed_by"))
+                motion_desc = safe_text(ov.get("motion_text"), "No motion description provided.")
+                st.warning(f"**Override Motion Filed by {filed_by_persona}**: {motion_desc}")
                 st.caption(f"Outcome: {'PASSED' if ov.get('passed') else 'FAILED'} (Votes: {ov.get('support_count', 0)}/4)")
 
             c_str, c_con = st.columns(2)
             with c_str:
                 st.markdown("#### ✅ Validated Strengths")
-                for s in decision_data.get("strengths", []):
-                    st.markdown(f"- {s['claim']} <span class='citation-tag'>[{s['citation_id']}]</span>", unsafe_allow_html=True)
+                for s in safe_list(decision_data.get("strengths")):
+                    if isinstance(s, dict):
+                        claim = safe_text(s.get("claim"), "No claim recorded")
+                        cit_id = safe_text(s.get("citation_id"), "N/A")
+                        st.markdown(f"- {claim} <span class='citation-tag'>[{cit_id}]</span>", unsafe_allow_html=True)
             with c_con:
                 st.markdown("#### ⚠️ Critical Concerns & Gaps")
-                for c in decision_data.get("concerns", []):
-                    st.markdown(f"- {c['claim']} <span class='citation-tag'>[{c['citation_id']}]</span>", unsafe_allow_html=True)
+                for c in safe_list(decision_data.get("concerns")):
+                    if isinstance(c, dict):
+                        claim = safe_text(c.get("claim"), "No claim recorded")
+                        cit_id = safe_text(c.get("citation_id"), "N/A")
+                        st.markdown(f"- {claim} <span class='citation-tag'>[{cit_id}]</span>", unsafe_allow_html=True)
 
             pdf_path = run_dir / "reports" / f"{cid}_final_report.pdf"
             if pdf_path.exists():
-                with open(pdf_path, "rb") as pf:
-                    st.download_button(
-                        label="📄 Download Official PDF Evaluation Report",
-                        data=pf.read(),
-                        file_name=f"{cid}_final_report.pdf",
-                        mime="application/pdf",
-                        type="primary"
-                    )
+                try:
+                    with open(pdf_path, "rb") as pf:
+                        st.download_button(
+                            label="📄 Download Official PDF Evaluation Report",
+                            data=pf.read(),
+                            file_name=f"{cid}_final_report.pdf",
+                            mime="application/pdf",
+                            type="primary"
+                        )
+                except Exception as e:
+                    st.caption(f"PDF download unavailable: {e}")
 
         with tab_rosetta:
             st.markdown("### Candidate Profile Bible (Rosetta Evidence Model)")
             rosetta_path = run_dir / "rosetta" / f"{cid}.json"
             if rosetta_path.exists():
-                with open(rosetta_path, "r", encoding="utf-8") as rf:
-                    rdata = json.load(rf)
+                try:
+                    with open(rosetta_path, "r", encoding="utf-8") as rf_file:
+                        rdata = safe_dict(json.load(rf_file))
+                except Exception:
+                    rdata = {}
                 
-                st.caption(f"Candidate: {rdata.get('candidate_name')} | Citations Indexed: {len(rdata.get('citations_index', {}))}")
+                c_idx = safe_dict(rdata.get("citations_index"))
+                cand_name_display = safe_text(rdata.get("candidate_name"), cname)
+                st.caption(f"Candidate: {cand_name_display} | Citations Indexed: {len(c_idx)}")
                 
                 c_rf1, c_rf2 = st.columns(2)
                 with c_rf1:
                     st.markdown("#### Verified Resume Facts")
-                    for rf in rdata.get("resume_facts", []):
-                        st.markdown(f"- **{rf.get('category', '').upper()}**: {rf.get('fact')} <span class='citation-tag'>[{rf.get('citation_id')}]</span>", unsafe_allow_html=True)
+                    for rf in safe_list(rdata.get("resume_facts")):
+                        if isinstance(rf, dict):
+                            cat = safe_upper(rf.get("category"), "FACT")
+                            fact_txt = safe_text(rf.get("fact"), "No fact recorded")
+                            cit_id = safe_text(rf.get("citation_id"), "N/A")
+                            st.markdown(f"- **{cat}**: {fact_txt} <span class='citation-tag'>[{cit_id}]</span>", unsafe_allow_html=True)
                 with c_rf2:
                     st.markdown("#### Interview Transcript Signals")
-                    for tf in rdata.get("transcript_facts", []):
-                        st.markdown(f"- **Q: {tf.get('question_summary', '')}**\n  {tf.get('answer_claim')} <span class='citation-tag'>[{tf.get('citation_id')}]</span>", unsafe_allow_html=True)
+                    for tf in safe_list(rdata.get("transcript_facts")):
+                        if isinstance(tf, dict):
+                            q_sum = safe_text(tf.get("question_summary"), "Interview Question")
+                            ans_txt = safe_text(tf.get("answer_claim"), "No answer recorded")
+                            cit_id = safe_text(tf.get("citation_id"), "N/A")
+                            st.markdown(f"- **Q: {q_sum}**\n  {ans_txt} <span class='citation-tag'>[{cit_id}]</span>", unsafe_allow_html=True)
+            else:
+                st.info("Rosetta profile not found for this run.")
 
         with tab_memos:
             st.markdown("### Independent Pre-Debate Agent Memos")
@@ -394,46 +477,77 @@ elif nav_choice == "📊 Evaluation Sessions":
             m_cols = st.columns(4)
             for i, p in enumerate(PERSONAS):
                 m_path = run_dir / "memos" / f"{cid}_{p}.json"
+                p_title = safe_title(p)
                 with m_cols[i]:
-                    st.markdown(f"#### {p.replace('_', ' ').title()}")
+                    st.markdown(f"#### {p_title}")
                     if m_path.exists():
-                        with open(m_path, "r", encoding="utf-8") as mf:
-                            m_json = json.load(mf)
-                        st.metric("Score", f"{m_json.get('score', 'N/A')}/10")
-                        st.metric("Confidence", (m_json.get('confidence_level') or 'N/A').upper())
-                        st.markdown(f"**Verdict**: `{m_json.get('recommendation', 'N/A').upper()}`")
-                        with st.expander("Read Strengths & Gaps"):
-                            st.write("**Strengths:**")
-                            for s in m_json.get("strengths", []):
-                                st.write(f"- {s.get('claim')} [{s.get('citation_id')}]")
-                            st.write("**Gaps:**")
-                            for g in m_json.get("gaps", []):
-                                st.write(f"- {g.get('claim')} [{g.get('citation_id')}]")
+                        try:
+                            with open(m_path, "r", encoding="utf-8") as mf:
+                                m_json = safe_dict(json.load(mf))
+                            score_val = m_json.get("score")
+                            score_display = f"{score_val}/10" if score_val is not None else "N/A"
+                            st.metric("Score", score_display)
+                            st.metric("Confidence", safe_upper(m_json.get("confidence_level"), "N/A"))
+                            st.markdown(f"**Verdict**: `{safe_upper(m_json.get('recommendation'), 'N/A')}`")
+                            with st.expander("Read Strengths & Gaps"):
+                                st.write("**Strengths:**")
+                                for s in safe_list(m_json.get("strengths")):
+                                    if isinstance(s, dict):
+                                        st.write(f"- {safe_text(s.get('claim'))} [{safe_text(s.get('citation_id'))}]")
+                                st.write("**Gaps:**")
+                                for g in safe_list(m_json.get("gaps")):
+                                    if isinstance(g, dict):
+                                        st.write(f"- {safe_text(g.get('claim'))} [{safe_text(g.get('citation_id'))}]")
+                        except Exception as e:
+                            st.warning(f"Error loading {p_title} memo: {e}")
+                    else:
+                        st.caption(f"{p_title} memo not available.")
 
         with tab_debate:
             st.markdown("### Deliberation Transcript & Cross-Examination")
             debate_path = run_dir / "debate" / f"{cid}_transcript.json"
             if debate_path.exists():
-                with open(debate_path, "r", encoding="utf-8") as df:
-                    d_json = json.load(df)
+                try:
+                    with open(debate_path, "r", encoding="utf-8") as df:
+                        d_json = safe_dict(json.load(df))
+                except Exception:
+                    d_json = {}
 
-                for r_idx, rnd in enumerate(d_json.get("rounds", [])):
-                    st.markdown(f"#### 📢 Round {rnd.get('round_number', r_idx+1)}: {rnd.get('agenda_item', '')}")
-                    for turn in rnd.get("turns", []):
-                        persona = turn.get("persona", "").replace("_", " ").title()
-                        resp = f" *(responding to {turn.get('responds_to').replace('_', ' ').title()})*" if turn.get("responds_to") else ""
+                rounds = safe_list(d_json.get("rounds"))
+                for r_idx, rnd in enumerate(rounds):
+                    if not isinstance(rnd, dict):
+                        continue
+                    r_num = rnd.get("round_number", r_idx + 1)
+                    r_agenda = safe_text(rnd.get("agenda_item"), f"Round {r_num}")
+                    st.markdown(f"#### 📢 Round {r_num}: {r_agenda}")
+                    for turn in safe_list(rnd.get("turns")):
+                        if not isinstance(turn, dict):
+                            continue
+                        persona = safe_title(turn.get("persona"), "Panel Agent")
+                        resp_to = turn.get("responds_to")
+                        resp = f" *(responding to {safe_title(resp_to)})*" if resp_to else ""
                         with st.chat_message(persona):
                             st.markdown(f"**{persona}**{resp}")
-                            st.write(turn.get("statement", ""))
-                            if turn.get("citations"):
-                                tags = " ".join([f"<span class='citation-tag'>[{c}]</span>" for c in turn["citations"]])
-                                st.markdown(f"Evidence: {tags}", unsafe_allow_html=True)
-                            if turn.get("score_delta"):
-                                d = turn["score_delta"]
-                                st.info(f"🔄 **OPINION CHANGED**: {d.get('previous_score')} → {d.get('new_score')} | Reason: {d.get('reason')} [{d.get('evidence_citation')}]")
+                            st.write(safe_text(turn.get("statement"), "No statement recorded."))
+                            cits = safe_list(turn.get("citations"))
+                            if cits:
+                                tags = " ".join([f"<span class='citation-tag'>[{safe_text(c)}]</span>" for c in cits if c])
+                                if tags:
+                                    st.markdown(f"Evidence: {tags}", unsafe_allow_html=True)
+                            s_delta = turn.get("score_delta")
+                            if isinstance(s_delta, dict) and s_delta:
+                                prev_s = s_delta.get("previous_score", "N/A")
+                                new_s = s_delta.get("new_score", "N/A")
+                                reason = safe_text(s_delta.get("reason"), "No reason specified")
+                                cit = safe_text(s_delta.get("evidence_citation"), "N/A")
+                                st.info(f"🔄 **OPINION CHANGED**: {prev_s} → {new_s} | Reason: {reason} [{cit}]")
+            else:
+                st.info("Debate transcript not found for this run.")
 
         with tab_flow:
             st.markdown("### End-to-End Decision Flow")
+            rec_val = safe_upper(decision_data.get("final_recommendation"), "HIRE")
+            box_color = "#064e3b" if rec_val == "HIRE" else "#7f1d1d"
             st.graphviz_chart(f"""
             digraph G {{
                 rankdir=TB;
@@ -452,7 +566,7 @@ elif nav_choice == "📊 Evaluation Sessions":
                 Debate [label="2. General Secretary Debate\\n(Multi-Round Cross-Examination)", fillcolor="#312e81"];
                 GS [label="3. General Secretary Verdict\\n(Non-Averaging Synthesis)", fillcolor="#1e1b4b"];
                 Override [label="4. Constitutional Override Check\\n(75% Supermajority Threshold)", fillcolor="#451a03"];
-                Final [label="5. Final Binding Decision\\n({decision_data.get('final_recommendation', 'HIRE').upper()})", fillcolor="#064e3b" if decision_data.get('final_recommendation') == 'hire' else "#7f1d1d"];
+                Final [label="5. Final Binding Decision\\n({rec_val})", fillcolor="{box_color}"];
 
                 Tech -> Debate;
                 HR -> Debate;
@@ -468,19 +582,40 @@ elif nav_choice == "📊 Evaluation Sessions":
             st.markdown("### Interactive Master Evidence Explorer")
             rosetta_path = run_dir / "rosetta" / f"{cid}.json"
             if rosetta_path.exists():
-                with open(rosetta_path, "r", encoding="utf-8") as rf:
-                    rdata = json.load(rf)
-                c_index = rdata.get("citations_index", {})
+                try:
+                    with open(rosetta_path, "r", encoding="utf-8") as rf:
+                        rdata = safe_dict(json.load(rf))
+                except Exception:
+                    rdata = {}
+                c_index = safe_dict(rdata.get("citations_index"))
                 
                 search_q = st.text_input("Search verbatim evidence by claim or ID (e.g. T-A7, R-EXP-01):", value="")
                 
                 for cit_id, cit_info in c_index.items():
-                    if search_q and search_q.lower() not in cit_id.lower() and search_q.lower() not in cit_info.get("quote", "").lower():
+                    if not isinstance(cit_info, dict):
                         continue
-                    with st.expander(f"📌 Citation [{cit_id}] — {cit_info.get('source_type', '').upper()} ({cit_info.get('section', '')})"):
-                        st.markdown(f"**Verbatim Source Quote:**")
-                        st.info(f"\"{cit_info.get('quote')}\"")
-                        st.caption(f"Document: {cit_info.get('document')} | Page: {cit_info.get('page', 1)} | Candidate: {cit_info.get('candidate_id')}")
+                    c_id_str = safe_text(cit_id, "CIT-UNKNOWN")
+                    quote_str = safe_text(cit_info.get("quote"), "")
+                    src_type = safe_upper(cit_info.get("source_type"), "SOURCE")
+                    section = safe_text(cit_info.get("section"), "General")
+                    doc_name = safe_text(cit_info.get("document"), "Document")
+                    page_num = cit_info.get("page", 1) or 1
+                    cand_id = safe_text(cit_info.get("candidate_id"), cid)
+
+                    if search_q:
+                        sq_l = search_q.lower()
+                        if sq_l not in c_id_str.lower() and sq_l not in quote_str.lower() and sq_l not in section.lower():
+                            continue
+
+                    with st.expander(f"📌 Citation [{c_id_str}] — {src_type} ({section})"):
+                        st.markdown("**Verbatim Source Quote:**")
+                        if quote_str:
+                            st.info(f"\"{quote_str}\"")
+                        else:
+                            st.caption("No verbatim quote text recorded.")
+                        st.caption(f"Document: {doc_name} | Page: {page_num} | Candidate: {cand_id}")
+            else:
+                st.info("Evidence index not found for this run.")
 
 
 # --- PAGE: HIRING ROOM (MULTI-CANDIDATE MATRIX) ---
@@ -493,30 +628,35 @@ elif nav_choice == "🏢 Hiring Room":
         st.info("No candidate evaluations available yet.")
     else:
         # Group by job_id
-        jobs = list(set([e["job_id"] for e in evals]))
+        jobs = list(set([safe_text(e.get("job_id"), "default_job") for e in evals if isinstance(e, dict)]))
         selected_job = st.selectbox("Select Target Job Role", jobs)
 
-        job_evals = [e for e in evals if e["job_id"] == selected_job]
-        st.markdown(f"### Evaluating {len(job_evals)} Candidate(s) for `{selected_job.replace('_', ' ').title()}`")
+        job_evals = [e for e in evals if isinstance(e, dict) and safe_text(e.get("job_id")) == selected_job]
+        st.markdown(f"### Evaluating {len(job_evals)} Candidate(s) for `{safe_title(selected_job)}`")
 
         matrix_rows = []
         for je in job_evals:
-            rid = je["run_id"]
-            cid = je["candidate_id"]
+            rid = safe_text(je.get("run_id"), "unknown_run")
+            cid = safe_text(je.get("candidate_id"), "unknown")
+            cname = safe_text(je.get("candidate_name"), cid)
             dec_path = settings.runs_dir / rid / "reports" / f"{cid}_decision.json"
             dec_data = {}
             if dec_path.exists():
-                with open(dec_path, "r", encoding="utf-8") as f:
-                    dec_data = json.load(f)
+                try:
+                    with open(dec_path, "r", encoding="utf-8") as f:
+                        dec_data = safe_dict(json.load(f))
+                except Exception:
+                    dec_data = {}
 
+            created_date = safe_text(je.get("created_at"), "")[:10] or "N/A"
             matrix_rows.append({
-                "Candidate": je["candidate_name"],
-                "Recommendation": (dec_data.get("final_recommendation") or "PENDING").upper(),
-                "Confidence": (dec_data.get("confidence_level") or "N/A").upper(),
-                "Strengths Count": len(dec_data.get("strengths", [])),
-                "Concerns Count": len(dec_data.get("concerns", [])),
+                "Candidate": cname,
+                "Recommendation": safe_upper(dec_data.get("final_recommendation"), "PENDING"),
+                "Confidence": safe_upper(dec_data.get("confidence_level"), "N/A"),
+                "Strengths Count": len(safe_list(dec_data.get("strengths"))),
+                "Concerns Count": len(safe_list(dec_data.get("concerns"))),
                 "Run ID": rid,
-                "Date": je["created_at"][:10]
+                "Date": created_date
             })
 
         st.dataframe(matrix_rows, use_container_width=True)
@@ -530,20 +670,30 @@ elif nav_choice == "👥 Candidates Directory":
     evals = list_all_evaluations()
     candidates_dict = {}
     for e in evals:
-        cid = e["candidate_id"]
+        if not isinstance(e, dict):
+            continue
+        cid = safe_text(e.get("candidate_id"), "unknown")
+        cname = safe_text(e.get("candidate_name"), cid)
+        job_id = safe_title(e.get("job_id"), "Default Role")
+        status_str = safe_upper(e.get("status"), "UNKNOWN")
+        run_id = safe_text(e.get("run_id"), "N/A")
+
         if cid not in candidates_dict:
             candidates_dict[cid] = {
                 "Candidate ID": cid,
-                "Full Name": e["candidate_name"],
+                "Full Name": cname,
                 "Total Evaluations": 1,
-                "Latest Job": e["job_id"].replace("_", " ").title(),
-                "Latest Status": e["status"].upper(),
-                "Latest Run": e["run_id"]
+                "Latest Job": job_id,
+                "Latest Status": status_str,
+                "Latest Run": run_id
             }
         else:
             candidates_dict[cid]["Total Evaluations"] += 1
 
-    st.dataframe(list(candidates_dict.values()), use_container_width=True)
+    if candidates_dict:
+        st.dataframe(list(candidates_dict.values()), use_container_width=True)
+    else:
+        st.info("No candidates evaluated yet.")
 
 
 # --- PAGE: REPORTS LIBRARY ---
@@ -552,28 +702,40 @@ elif nav_choice == "📄 Reports Library":
     st.markdown('<div class="sub-header">Download official evidence-backed PDF deliberation reports.</div>', unsafe_allow_html=True)
 
     evals = list_all_evaluations()
+    if not evals:
+        st.info("No reports generated yet.")
     for e in evals:
-        rid = e["run_id"]
-        cid = e["candidate_id"]
+        if not isinstance(e, dict):
+            continue
+        rid = safe_text(e.get("run_id"), "unknown_run")
+        cid = safe_text(e.get("candidate_id"), "unknown")
+        cname = safe_text(e.get("candidate_name"), cid)
+        job_title = safe_title(e.get("job_id"), "Role")
+        created_str = safe_text(e.get("created_at"), "")[:19] or "N/A"
+        
         pdf_path = settings.runs_dir / rid / "reports" / f"{cid}_final_report.pdf"
         
         with st.container():
             c1, c2, c3 = st.columns([2, 2, 1])
             with c1:
-                st.markdown(f"**{e['candidate_name']}** (`{cid}`)")
-                st.caption(f"Role: {e['job_id'].replace('_', ' ').title()} | Run: {rid}")
+                st.markdown(f"**{cname}** (`{cid}`)")
+                st.caption(f"Role: {job_title} | Run: {rid}")
             with c2:
-                st.caption(f"Evaluated on {e['created_at'][:19]}")
+                st.caption(f"Evaluated on {created_str}")
             with c3:
                 if pdf_path.exists():
-                    with open(pdf_path, "rb") as pf:
+                    try:
+                        with open(pdf_path, "rb") as pf:
+                            pdf_bytes = pf.read()
                         st.download_button(
                             label="⬇️ Download PDF",
-                            data=pf.read(),
+                            data=pdf_bytes,
                             file_name=f"{cid}_final_report.pdf",
                             mime="application/pdf",
                             key=f"dl_{rid}"
                         )
+                    except Exception as e:
+                        st.caption(f"PDF download error: {e}")
                 else:
-                    st.caption("PDF generating...")
+                    st.caption("PDF deliverable unavailable")
             st.markdown("---")
