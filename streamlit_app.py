@@ -1,5 +1,6 @@
 """Streamlit Community Cloud Application for PROMPT WARS (Project Rosetta).
 Evidence-Grounded Multi-Agent Hiring Intelligence.
+Source of Truth: Local Application UI (http://127.0.0.1:8000).
 """
 
 import os
@@ -94,29 +95,27 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for Dark Modern Professional Theme
+# Custom CSS matching Local React UI (#0B0F19 background, #131D31 cards, Emerald/Rose badges)
 st.markdown("""
 <style>
     .main-header {
-        font-size: 2.2rem;
-        font-weight: 800;
-        letter-spacing: -0.03em;
-        background: linear-gradient(135deg, #60a5fa 0%, #a855f7 50%, #ec4899 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 0.2rem;
+        font-size: 1.5rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: #ffffff;
+        margin-bottom: 0.1rem;
     }
     .sub-header {
         color: #94a3b8;
-        font-size: 0.95rem;
+        font-size: 0.85rem;
         margin-bottom: 1.5rem;
     }
-    .metric-card {
-        background: #1e293b;
-        border: 1px solid #334155;
-        border-radius: 8px;
-        padding: 16px;
-        text-align: center;
+    .report-card {
+        background-color: #131D31;
+        border: 1px solid rgba(51, 65, 85, 0.8);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 16px;
     }
     .citation-tag {
         background-color: #0f172a;
@@ -129,9 +128,9 @@ st.markdown("""
         font-weight: 600;
     }
     .hire-badge {
-        background-color: #064e3b;
+        background-color: rgba(16, 185, 129, 0.1);
         color: #34d399;
-        border: 1px solid #059669;
+        border: 1px solid rgba(16, 185, 129, 0.2);
         border-radius: 6px;
         padding: 4px 12px;
         font-weight: 700;
@@ -139,14 +138,35 @@ st.markdown("""
         display: inline-block;
     }
     .no-hire-badge {
-        background-color: #7f1d1d;
-        color: #f87171;
-        border: 1px solid #dc2626;
+        background-color: rgba(244, 63, 94, 0.1);
+        color: #fb7185;
+        border: 1px solid rgba(244, 63, 94, 0.2);
         border-radius: 6px;
         padding: 4px 12px;
         font-weight: 700;
         font-size: 1.1rem;
         display: inline-block;
+    }
+    .status-pill-completed {
+        background-color: rgba(16, 185, 129, 0.1);
+        color: #34d399;
+        border: 1px solid rgba(16, 185, 129, 0.2);
+        border-radius: 9999px;
+        padding: 2px 10px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        font-family: monospace;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .traceability-badge {
+        color: #cbd5e1;
+        font-size: 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 8px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -843,47 +863,84 @@ elif st.session_state["current_nav"] == "👥 Candidates Directory":
 
 
 # =====================================================================
-# VIEW 6: REPORTS LIBRARY
+# VIEW 6: REPORTS & DELIVERABLES (PARITY WITH LOCAL /reports)
 # =====================================================================
 elif st.session_state["current_nav"] == "📄 Reports Library":
-    st.markdown('<div class="main-header">Publication Reports Library</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Download official evidence-backed PDF deliberation reports.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">Executive Reports & Deliverables</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Publication-quality hiring recommendations with 100% evidence resolution</div>', unsafe_allow_html=True)
 
     evals = list_all_evaluations()
-    if not evals:
-        st.info("No reports generated yet.")
-    for e in evals:
-        if not isinstance(e, dict):
-            continue
-        rid = safe_text(e.get("run_id"), "unknown_run")
-        cid = safe_text(e.get("candidate_id"), "unknown")
-        cname = safe_text(e.get("candidate_name"), safe_title(cid))
-        job_title = safe_title(e.get("job_id"), "Role")
-        created_str = safe_text(e.get("created_at"), "")[:19] or "N/A"
-        
-        pdf_path = settings.runs_dir / rid / "reports" / f"{cid}_final_report.pdf"
-        
-        with st.container():
-            c1, c2, c3 = st.columns([2, 2, 1])
-            with c1:
-                st.markdown(f"**{cname}** (`{cid}`)")
-                st.caption(f"Role: {job_title} | Run: {rid}")
-            with c2:
-                st.caption(f"Evaluated on {created_str}")
-            with c3:
-                if pdf_path.exists():
-                    try:
-                        with open(pdf_path, "rb") as pf:
-                            pdf_bytes = pf.read()
-                        st.download_button(
-                            label="⬇️ Download PDF",
-                            data=pdf_bytes,
-                            file_name=f"{cid}_final_report.pdf",
-                            mime="application/pdf",
-                            key=f"dl_{rid}"
-                        )
-                    except Exception as e:
-                        st.caption(f"PDF download error: {e}")
-                else:
-                    st.caption("PDF deliverable unavailable")
-            st.markdown("---")
+    completed_evals = [e for e in evals if isinstance(e, dict) and safe_text(e.get("status")) == "completed"]
+
+    if not completed_evals:
+        # Match Local EmptyState Component
+        st.markdown("""
+        <div style="background-color: #131D31; border: 1px dashed rgba(51, 65, 85, 0.8); border-radius: 12px; padding: 40px; text-align: center; margin-top: 16px;">
+            <div style="font-size: 2rem; margin-bottom: 8px;">📁</div>
+            <h3 style="font-size: 1.1rem; font-weight: 600; color: #ffffff; margin-bottom: 4px;">No completed reports available</h3>
+            <p style="font-size: 0.85rem; color: #94a3b8; max-width: 400px; margin: 0 auto 16px auto;">
+                Reports are generated automatically once an evaluation panel finishes debate.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        col_c1, col_c2, col_c3 = st.columns([1, 1, 1])
+        with col_c2:
+            if st.button("➕ Create First Evaluation", type="primary", use_container_width=True):
+                set_navigation("🚀 New Evaluation")
+                st.rerun()
+    else:
+        # 2-Column Card Grid Matching Local UI: grid grid-cols-1 md:grid-cols-2 gap-5
+        for row_start in range(0, len(completed_evals), 2):
+            cols = st.columns(2)
+            for c_idx in range(2):
+                item_idx = row_start + c_idx
+                if item_idx < len(completed_evals):
+                    e = completed_evals[item_idx]
+                    rid = safe_text(e.get("run_id"), "unknown_run")
+                    cid = safe_text(e.get("candidate_id"), "unknown")
+                    cname = safe_text(e.get("candidate_name"), safe_title(cid))
+                    jid = safe_text(e.get("job_id"), "default_role")
+                    pdf_path = settings.runs_dir / rid / "reports" / f"{cid}_final_report.pdf"
+
+                    with cols[c_idx]:
+                        # Card HTML Structure matching React /reports
+                        st.markdown(f"""
+                        <div class="report-card">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span style="font-family: monospace; font-size: 0.75rem; color: #94a3b8;">{rid}</span>
+                                <span class="status-pill-completed"><span style="width: 6px; height: 6px; border-radius: 50%; background-color: #34d399; display: inline-block;"></span>Completed</span>
+                            </div>
+                            <h3 style="font-size: 1.15rem; font-weight: 700; color: #ffffff; margin: 0 0 2px 0;">{cname}</h3>
+                            <p style="font-family: monospace; font-size: 0.75rem; color: #94a3b8; margin: 0 0 12px 0;">Role: {jid}</p>
+                            <div class="traceability-badge">
+                                <span style="color: #34d399; font-weight: bold;">🛡️</span>
+                                <span>100% Evidence Traceability Index Included</span>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                        # Action Bar matching React Link & Download PDF Button
+                        act_col1, act_col2 = st.columns(2)
+                        with act_col1:
+                            if st.button(f"View in UI ↗", key=f"rep_view_{rid}", use_container_width=True):
+                                set_navigation("🔬 Evaluation Detail", run_id=rid)
+                                st.rerun()
+                        with act_col2:
+                            if pdf_path.exists():
+                                try:
+                                    with open(pdf_path, "rb") as pf:
+                                        pdf_data = pf.read()
+                                    st.download_button(
+                                        label="⬇️ Download PDF",
+                                        data=pdf_data,
+                                        file_name=f"{cid}_final_report.pdf",
+                                        mime="application/pdf",
+                                        key=f"rep_dl_{rid}",
+                                        type="primary",
+                                        use_container_width=True
+                                    )
+                                except Exception as err:
+                                    st.caption(f"PDF error: {err}")
+                            else:
+                                st.caption("PDF deliverable unavailable")
+                        st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
