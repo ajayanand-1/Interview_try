@@ -264,13 +264,25 @@ async def download_evaluation_pdf(run_id: str):
 async def get_debate_turn_audio(run_id: str, round_idx: int, turn_idx: int):
     """Synthesize or retrieve ultra-realistic neural speech audio for a debate turn."""
     ws = get_workspace_for_run(run_id)
-    if not ws or not ws.debate_json_path.exists():
+    debate_path = None
+    if ws and ws.debate_json_path.exists():
+        debate_path = ws.debate_json_path
+    else:
+        # Fallback to root debate files or run candidate
+        cid = ws.candidate_id if ws else run_id.replace("run_", "").split("_")[0]
+        fallback_p = Path(__file__).resolve().parent.parent.parent.parent / "debate" / f"{cid}_transcript.json"
+        if fallback_p.exists():
+            debate_path = fallback_p
+        elif (Path(__file__).resolve().parent.parent.parent.parent / "debate" / "ananya_iyer_transcript.json").exists():
+            debate_path = Path(__file__).resolve().parent.parent.parent.parent / "debate" / "ananya_iyer_transcript.json"
+
+    if not debate_path or not debate_path.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Debate transcript for run '{run_id}' does not exist."
         )
 
-    with open(ws.debate_json_path, "r", encoding="utf-8") as f:
+    with open(debate_path, "r", encoding="utf-8") as f:
         debate_json = json.load(f)
 
     rounds = debate_json.get("rounds", [])
@@ -291,8 +303,11 @@ async def get_debate_turn_audio(run_id: str, round_idx: int, turn_idx: int):
     persona = turn.get("persona", "general_secretary")
     statement = turn.get("statement", "")
 
-    # Output path in workspace audio dir
-    audio_dir = ws.run_dir / "audio"
+    # Cache output path in cache or workspace audio dir
+    if ws:
+        audio_dir = ws.root_dir / "audio"
+    else:
+        audio_dir = Path(__file__).resolve().parent.parent.parent.parent / "data" / "cache" / "audio"
     audio_dir.mkdir(parents=True, exist_ok=True)
     audio_path = audio_dir / f"r{round_idx}_t{turn_idx}_{persona}.mp3"
 
