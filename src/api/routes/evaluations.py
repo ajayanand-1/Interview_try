@@ -258,6 +258,83 @@ async def download_evaluation_pdf(run_id: str):
     )
 
 
+# --- NEURAL AUDIO STREAMING API ---
+
+@router.get("/evaluations/{run_id}/debate/audio/{round_idx}/{turn_idx}")
+async def get_debate_turn_audio(run_id: str, round_idx: int, turn_idx: int):
+    """Synthesize or retrieve ultra-realistic neural speech audio for a debate turn."""
+    ws = get_workspace_for_run(run_id)
+    if not ws or not ws.debate_json_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Debate transcript for run '{run_id}' does not exist."
+        )
+
+    with open(ws.debate_json_path, "r", encoding="utf-8") as f:
+        debate_json = json.load(f)
+
+    rounds = debate_json.get("rounds", [])
+    if round_idx < 0 or round_idx >= len(rounds):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Round index {round_idx} out of range."
+        )
+
+    turns = rounds[round_idx].get("turns", [])
+    if turn_idx < 0 or turn_idx >= len(turns):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Turn index {turn_idx} out of range in round {round_idx}."
+        )
+
+    turn = turns[turn_idx]
+    persona = turn.get("persona", "general_secretary")
+    statement = turn.get("statement", "")
+
+    # Output path in workspace audio dir
+    audio_dir = ws.run_dir / "audio"
+    audio_dir.mkdir(parents=True, exist_ok=True)
+    audio_path = audio_dir / f"r{round_idx}_t{turn_idx}_{persona}.mp3"
+
+    from src.debate.voice import synthesize_neural_speech
+    await synthesize_neural_speech(statement, persona, audio_path)
+
+    if not audio_path.exists() or audio_path.stat().st_size == 0:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate neural audio stream."
+        )
+
+    return FileResponse(
+        path=str(audio_path),
+        media_type="audio/mpeg",
+        filename=f"{run_id}_r{round_idx}_t{turn_idx}.mp3",
+        headers={"Cache-Control": "public, max-age=86400"}
+    )
+
+
+@router.post("/speech/synthesize")
+async def synthesize_speech_direct(payload: Dict[str, Any]):
+    """Direct real-time neural speech synthesis for custom text and persona."""
+    text = payload.get("text", "")
+    persona = payload.get("persona", "general_secretary")
+    if not text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Text parameter is required."
+        )
+
+    from src.debate.voice import synthesize_neural_speech
+    audio_path = await synthesize_neural_speech(text, persona)
+
+    return FileResponse(
+        path=str(audio_path),
+        media_type="audio/mpeg",
+        filename="speech.mp3",
+        headers={"Cache-Control": "public, max-age=86400"}
+    )
+
+
 # --- CANDIDATES & JOBS DIRECTORY API ---
 
 @router.get("/candidates")

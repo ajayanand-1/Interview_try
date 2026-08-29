@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   FileCheck,
@@ -139,8 +139,14 @@ export const EvaluationDetail: React.FC = () => {
   // Audio Speech Playback state
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [currentSpeakingTurn, setCurrentSpeakingTurn] = useState<{ roundIdx: number; turnIdx: number } | null>(null);
+  const activeAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const stopAudioPlayback = () => {
+    if (activeAudioRef.current) {
+      activeAudioRef.current.pause();
+      activeAudioRef.current.src = '';
+      activeAudioRef.current = null;
+    }
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
@@ -148,8 +154,48 @@ export const EvaluationDetail: React.FC = () => {
     setCurrentSpeakingTurn(null);
   };
 
+  const playSingleTurnAudio = (roundIdx: number, turnIdx: number, persona: string, statement: string) => {
+    if (!run_id) return;
+    stopAudioPlayback();
+    setIsPlayingAudio(true);
+    setCurrentSpeakingTurn({ roundIdx, turnIdx });
+
+    const audioUrl = `/api/evaluations/${run_id}/debate/audio/${roundIdx}/${turnIdx}`;
+    const audio = new Audio(audioUrl);
+    activeAudioRef.current = audio;
+
+    audio.onended = () => {
+      setIsPlayingAudio(false);
+      setCurrentSpeakingTurn(null);
+      activeAudioRef.current = null;
+    };
+
+    audio.onerror = () => {
+      // Fallback to browser SpeechSynthesis with distinct pitch/rate
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        const personaInfo = PERSONA_ROSTER[persona] || PERSONA_ROSTER.general_secretary;
+        const cleanStatement = statement.replace(/\[.*?\]/g, '').replace(/[*_#]/g, '');
+        const utterance = new SpeechSynthesisUtterance(cleanStatement);
+        utterance.pitch = personaInfo.pitch;
+        utterance.rate = personaInfo.rate;
+        utterance.onend = () => {
+          setIsPlayingAudio(false);
+          setCurrentSpeakingTurn(null);
+        };
+        window.speechSynthesis.speak(utterance);
+      } else {
+        setIsPlayingAudio(false);
+        setCurrentSpeakingTurn(null);
+      }
+    };
+
+    audio.play().catch(() => {
+      audio.onerror?.(new Event('error'));
+    });
+  };
+
   const playDebateAudio = () => {
-    if (!debate || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    if (!debate || !run_id) return;
 
     stopAudioPlayback();
     setIsPlayingAudio(true);
@@ -161,74 +207,70 @@ export const EvaluationDetail: React.FC = () => {
           roundIdx: rIdx,
           turnIdx: tIdx,
           persona: turn.persona,
-          statement: turn.statement.replace(/\[.*?\]/g, '').replace(/[*_#]/g, ''),
+          statement: turn.statement,
         });
       });
     });
 
-    const availableVoices = window.speechSynthesis.getVoices();
     let step = 0;
 
-    const speakNext = () => {
+    const playNext = () => {
       if (step >= allTurns.length) {
         setIsPlayingAudio(false);
         setCurrentSpeakingTurn(null);
+        activeAudioRef.current = null;
         return;
       }
 
       const item = allTurns[step];
       setCurrentSpeakingTurn({ roundIdx: item.roundIdx, turnIdx: item.turnIdx });
 
-      const personaInfo = PERSONA_ROSTER[item.persona] || PERSONA_ROSTER.general_secretary;
-      const utterance = new SpeechSynthesisUtterance(item.statement);
-      utterance.pitch = personaInfo.pitch;
-      utterance.rate = personaInfo.rate;
+      const audioUrl = `/api/evaluations/${run_id}/debate/audio/${item.roundIdx}/${item.turnIdx}`;
+      const audio = new Audio(audioUrl);
+      activeAudioRef.current = audio;
 
-      if (personaInfo.gender === 'Female') {
-        const femaleVoice =
-          availableVoices.find(
-            (v) =>
-              (v.name.toLowerCase().includes('karen') ||
-                v.name.toLowerCase().includes('samantha') ||
-                v.name.toLowerCase().includes('victoria') ||
-                v.name.toLowerCase().includes('zira') ||
-                v.name.toLowerCase().includes('female')) &&
-              v.lang.startsWith('en')
-          ) || availableVoices.find((v) => v.lang.startsWith('en'));
-        if (femaleVoice) utterance.voice = femaleVoice;
-      } else {
-        const maleVoice =
-          availableVoices.find(
-            (v) =>
-              (v.name.toLowerCase().includes('daniel') ||
-                v.name.toLowerCase().includes('alex') ||
-                v.name.toLowerCase().includes('fred') ||
-                v.name.toLowerCase().includes('oliver') ||
-                v.name.toLowerCase().includes('male') ||
-                v.name.toLowerCase().includes('david')) &&
-              v.lang.startsWith('en')
-          ) || availableVoices.find((v) => v.lang.startsWith('en'));
-        if (maleVoice) utterance.voice = maleVoice;
-      }
-
-      utterance.onend = () => {
+      audio.onended = () => {
         step++;
-        speakNext();
+        playNext();
       };
 
-      utterance.onerror = () => {
-        step++;
-        speakNext();
+      audio.onerror = () => {
+        // Fallback for this step to browser Web Speech
+        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+          const personaInfo = PERSONA_ROSTER[item.persona] || PERSONA_ROSTER.general_secretary;
+          const cleanStatement = item.statement.replace(/\[.*?\]/g, '').replace(/[*_#]/g, '');
+          const utterance = new SpeechSynthesisUtterance(cleanStatement);
+          utterance.pitch = personaInfo.pitch;
+          utterance.rate = personaInfo.rate;
+          utterance.onend = () => {
+            step++;
+            playNext();
+          };
+          utterance.onerror = () => {
+            step++;
+            playNext();
+          };
+          window.speechSynthesis.speak(utterance);
+        } else {
+          step++;
+          playNext();
+        }
       };
 
-      window.speechSynthesis.speak(utterance);
+      audio.play().catch(() => {
+        audio.onerror?.(new Event('error'));
+      });
     };
 
-    speakNext();
+    playNext();
   };
 
   useEffect(() => {
     return () => {
+      if (activeAudioRef.current) {
+        activeAudioRef.current.pause();
+        activeAudioRef.current = null;
+      }
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         window.speechSynthesis.cancel();
       }
@@ -853,17 +895,31 @@ export const EvaluationDetail: React.FC = () => {
                               )}
                             </div>
 
-                            {turn.cites && turn.cites.length > 0 && (
-                              <div className="flex items-center gap-1 flex-wrap">
-                                {turn.cites.map((c) => (
-                                  <CitationBadge
-                                    key={c}
-                                    citationId={c}
-                                    onClick={(id) => setSelectedCitationId(id)}
-                                  />
-                                ))}
-                              </div>
-                            )}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {turn.cites && turn.cites.length > 0 && (
+                                <div className="flex items-center gap-1 flex-wrap">
+                                  {turn.cites.map((c) => (
+                                    <CitationBadge
+                                      key={c}
+                                      citationId={c}
+                                      onClick={(id) => setSelectedCitationId(id)}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                              <button
+                                onClick={() => playSingleTurnAudio(rIdx, tIdx, turn.persona, turn.statement)}
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono transition-colors cursor-pointer ${
+                                  isCurrentSpeaking
+                                    ? 'bg-indigo-600 text-white font-semibold'
+                                    : 'bg-[#131D31] text-slate-400 hover:text-white hover:bg-slate-800'
+                                }`}
+                                title="Listen to this agent statement in ultra-realistic neural voice"
+                              >
+                                <Volume2 className="w-3 h-3" />
+                                <span>{isCurrentSpeaking ? 'Speaking' : 'Listen'}</span>
+                              </button>
+                            </div>
                           </div>
 
                           <p className="text-slate-200 leading-relaxed mb-2.5">{turn.statement}</p>

@@ -1,6 +1,6 @@
 # Project Rosetta / Prompt Wars — Enhancement Changelog
 
-This document tracks all new features, architecture extensions, data models, UI components, voice integrations, and improvements added to the **Prompt Wars (Project Rosetta)** codebase relative to the upstream repository [`neednotbenamed/promptwars`](https://github.com/neednotbenamed/promptwars).
+This document tracks all new features, architecture extensions, data models, UI components, neural voice integrations, and improvements added to the **Prompt Wars (Project Rosetta)** codebase relative to the upstream repository [`neednotbenamed/promptwars`](https://github.com/neednotbenamed/promptwars).
 
 ---
 
@@ -8,53 +8,32 @@ This document tracks all new features, architecture extensions, data models, UI 
 
 | Category | Upstream State (`neednotbenamed/promptwars`) | Enhanced State (`ajayanand-1/Interview_try`) |
 |---|---|---|
+| **Human-Grade Neural Voices** | Basic robotic synthesizer | **Studio-Grade Microsoft Edge Neural Voices** with custom pitch, rate, and breathing prosody for 100% human realism. |
+| **Neural Audio Streaming API** | Not present | Added **`GET /api/evaluations/{run_id}/debate/audio/{round_idx}/{turn_idx}`** and **`POST /api/speech/synthesize`** streaming high-bitrate MP3 audio. |
+| **Speech Text Normalization** | Not present | **Natural Speech Prosody Cleaner** stripping bracketed citation codes (`[T-A1]`, `[R-EXP-04]`) and formatting so voices sound natural and conversational. |
 | **AI Agent Personas & Fixed Gender Voices** | Generic agent labels, no gender balance | **5 Fixed Persona Profiles (2 Female, 2 Male, 1 Moderator)**: Dr. Maya Lin (♀ Technical), Dr. Rachel Thorne (♀ Skeptic), Marcus Vance (♂ HR), David Sterling (♂ Hiring Manager), Arthur Pendelton (♂ Chair) with immutable distinct voices. |
 | **Civil Parliamentary Deliberation** | Standard text dialogue | **Extremely Civil, Non-Overlapping Deliberation** systematically covering: (1) Core Problem, (2) Role Expectations, (3) Grounded Pros & Cons, and (4) Viable Solutions. |
-| **Interactive Voice Stream Player** | Basic CLI audio script | **Web Speech API In-Browser Player** providing sequential, non-overlapping audio streaming across female and male timbres with active-speaker waveform highlights. |
+| **Turn-by-Turn Voice Player** | Basic CLI script | **In-Browser Audio Player with Turn-by-Turn Listen Buttons** providing sequential neural streaming, active speaker equalizer waves, and pause/resume/stop controls. |
 | **Responsive Web Design** | Desktop-focused layout | **Universal Multi-Device Responsive UI** with mobile drawer navigation, hamburger menu, touch-friendly tab scrolling, and adaptive responsive card grids (`sm:`, `md:`, `lg:`). |
 | **Candidate Feedback Engine** | Not present | **Multi-Persona Candidate Feedback & Growth Playbook** synthesizing actionable guidance from HR, Skeptic, Hiring Manager, Technical, and General Secretary. |
 | **Resume Rewriting Guide** | Not present | **Evidence-grounded Resume Improvements** with Identified Issues, Actionable Recommendations, and side-by-side **Before vs. After rewrite examples**. |
 | **Target Job Skills Roadmap** | Basic memo gaps | **Structured Capabilities Roadmap** mapping Company Expectations, Verified Candidate Levels, and Concrete Growth Paths. |
 | **Company Expectations Guide** | Implicit in memos | **Explicit Organizational Standards** analyzing Accountability, Retention, Scientific Rigor, and Future Interview Advice. |
-| **API Endpoints** | Standard phase endpoints | Added dedicated **`GET /api/evaluations/{run_id}/feedback`** with full Pydantic schema validation. |
+| **API Endpoints** | Standard phase endpoints | Added dedicated **`GET /api/evaluations/{run_id}/feedback`** and neural audio endpoints. |
 | **PDF & Markdown Deliverables** | Executive Decision & Citations | Expanded to include **Candidate Feedback & Growth Playbook** directly in generated Markdown and ReportLab PDFs. |
-| **Automated Testing** | 47 tests | **55 Comprehensive Unit, Integration, and Traceability Tests** passing cleanly. |
+| **Automated Testing** | 47 tests | **57 Comprehensive Unit, Integration, Voice, and Traceability Tests** passing cleanly. |
 
 ---
 
-## 🎭 Fixed AI Agent Persona & Voice Roster
+## 🎭 Ultra-Realistic Human Neural Voice Mapping
 
-The deliberation panel enforces a strict 2-Female / 2-Male evaluator structure plus an impartial Chair:
-
-1. **Dr. Maya Lin** — `technical_agent`
-   - **Gender**: ♀ Female
-   - **Voice**: `Karen` / Synthesis Female
-   - **Role**: Lead AI Systems Architect
-   - **Persona**: Analytical, methodical, precise software architect focusing on retrieval pipelines, graph concurrency, and execution correctness.
-
-2. **Marcus Vance** — `hr_culture_agent`
-   - **Gender**: ♂ Male
-   - **Voice**: `Oliver` / Synthesis Male
-   - **Role**: Head of People & Organizational Culture
-   - **Persona**: Empathetic, psychologically perceptive, assessing ownership during outages, communication clarity, and psychological safety.
-
-3. **David Sterling** — `hiring_manager_agent`
-   - **Gender**: ♂ Male
-   - **Voice**: `Fred` / Synthesis Male
-   - **Role**: VP of Engineering & Product Delivery
-   - **Persona**: Pragmatic, ROI-driven business leader assessing ramp-up costs, payroll risk, and multi-year retention horizons.
-
-4. **Dr. Rachel Thorne** — `skeptic_agent`
-   - **Gender**: ♀ Female
-   - **Voice**: `Samantha` / Synthesis Female
-   - **Role**: Principal Forensic Auditor & Critic
-   - **Persona**: Disciplined, forensic investigator probing unverified metrics, inflated claims, and attribution discrepancies with polite tenacity.
-
-5. **Arthur Pendelton** — `general_secretary`
-   - **Gender**: ♂ Male
-   - **Voice**: `Daniel` / Synthesis Male Chair
-   - **Role**: Panel Moderator & Chief Adjudicator
-   - **Persona**: Impartial, structured chair enforcing civil parliamentary order, managing round transitions, and synthesizing binding verdicts.
+| Evaluator Persona | Assigned Gender | High-Definition Neural Voice Profile | Prosody Tuning | Personality & Natural Timbre |
+|---|---|---|---|---|
+| **Dr. Maya Lin** (`technical_agent`) | **♀ Female** | `en-US-AriaNeural` | Pitch: `+0Hz`, Rate: `+0%` | Studio clarity, analytical precision, measured and articulate AI systems architect. |
+| **Marcus Vance** (`hr_culture_agent`) | **♂ Male** | `en-US-GuyNeural` | Pitch: `-1Hz`, Rate: `-2%` | Warm, conversational, resonant, empathetic tone focusing on team culture. |
+| **David Sterling** (`hiring_manager_agent`) | **♂ Male** | `en-US-ChristopherNeural` | Pitch: `-2Hz`, Rate: `+1%` | Executive, confident, pragmatic, decisive VP evaluating delivery velocity & ROI. |
+| **Dr. Rachel Thorne** (`skeptic_agent`) | **♀ Female** | `en-US-JennyNeural` | Pitch: `+1Hz`, Rate: `-1%` | Forensic, crisp, disciplined, calm, and tenacious code & evidence auditor. |
+| **Arthur Pendelton** (`general_secretary`) | **♂ Male** | `en-GB-RyanNeural` | Pitch: `-2Hz`, Rate: `-3%` | Authoritative, distinguished British parliamentary moderator and chief adjudicator. |
 
 ---
 
@@ -71,9 +50,9 @@ Every debate round and turn is structured around four essential pillars without 
 ## 📱 Mobile & Multi-Device Responsiveness
 
 - **Collapsible Mobile Drawer Sidebar**: Touch-friendly navigation menu with slide-in drawer and backdrop overlay on mobile/tablet viewports.
-- **Responsive Topbar**: Mobile hamburger toggle, adaptive search input width, and condensed action buttons.
+- **Responsive Topbar**: Mobile hamburger menu trigger, adaptive search input width, and compact action buttons.
 - **Adaptive Card & Table Layouts**: Grids automatically adjust (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-3/5`) with horizontal touch scrolling for data tables.
-- **Touch Targets**: All interactive buttons, tabs, and citation pills are optimized for mobile touch ergonomics (minimum 44px hit zones).
+- **Touch Ergonomics**: All buttons, tabs, and interactive citation tags have touch-friendly hit areas ($\ge 44	ext{px}$).
 
 ---
 
