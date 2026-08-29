@@ -185,6 +185,26 @@ async def get_evaluation_decision(run_id: str):
         return json.load(f)
 
 
+@router.get("/evaluations/{run_id}/feedback")
+async def get_evaluation_feedback(run_id: str):
+    """Get the multi-persona candidate feedback and growth playbook for a run."""
+    ws = get_workspace_for_run(run_id)
+    if not ws or not ws.decision_json_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Feedback data for run '{run_id}' is not available yet."
+        )
+    with open(ws.decision_json_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    return data.get("feedback") or {
+        "overall_summary": "Evaluation feedback pending.",
+        "resume_improvements": [],
+        "required_skills": [],
+        "company_expectations": [],
+        "persona_feedback": []
+    }
+
+
 @router.get("/evaluations/{run_id}/report")
 async def get_evaluation_report(run_id: str):
     """Get summary report metadata and deliverable file paths for a run."""

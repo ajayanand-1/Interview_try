@@ -22,6 +22,12 @@ import {
   ArrowRight,
   CheckCircle2,
   XCircle,
+  Sparkles,
+  Lightbulb,
+  GraduationCap,
+  Briefcase,
+  Target,
+  FileText,
 } from 'lucide-react';
 import { api } from '../api/client';
 import {
@@ -35,7 +41,7 @@ import { StatusBadge } from '../components/common/StatusBadge';
 import { CitationBadge } from '../components/common/CitationBadge';
 import { CitationModal } from '../components/common/CitationModal';
 
-type TabType = 'overview' | 'rosetta' | 'memos' | 'debate' | 'decision_path';
+type TabType = 'overview' | 'rosetta' | 'memos' | 'debate' | 'decision_path' | 'feedback';
 
 export const EvaluationDetail: React.FC = () => {
   const { run_id } = useParams<{ run_id: string }>();
@@ -255,6 +261,17 @@ export const EvaluationDetail: React.FC = () => {
         >
           <GitCommit className="w-4 h-4" />
           Decision Path Flow
+        </button>
+        <button
+          onClick={() => setActiveTab('feedback')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
+            activeTab === 'feedback'
+              ? 'border-indigo-500 text-indigo-400 bg-indigo-500/5'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Sparkles className="w-4 h-4 text-amber-400" />
+          Candidate Feedback & Growth
         </button>
       </div>
 
@@ -714,6 +731,226 @@ export const EvaluationDetail: React.FC = () => {
             <div className="p-8 text-center text-slate-400 bg-[#131D31] rounded-xl border border-slate-800">
               <Clock className="w-6 h-6 mx-auto mb-2 text-indigo-400 animate-spin" />
               <p className="text-sm font-semibold text-white">Generating Decision Path...</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab 6: Candidate Feedback & Growth Playbook */}
+      {activeTab === 'feedback' && (
+        <div className="space-y-6">
+          {decision?.feedback ? (
+            <div className="space-y-6">
+              {/* Top Overview Banner */}
+              <div className="bg-gradient-to-r from-indigo-950/40 via-purple-950/30 to-slate-900 border border-indigo-500/30 rounded-2xl p-6 relative overflow-hidden">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-amber-300 shrink-0">
+                    <Sparkles className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-base font-bold text-white tracking-wide">
+                        Candidate Growth & Interview Preparation Playbook
+                      </h3>
+                      <span className="px-2.5 py-0.5 text-[10px] font-bold rounded-full uppercase bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                        Evidence-Grounded Insights
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed max-w-4xl">
+                      {decision.feedback.overall_summary}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 1: Resume Improvements */}
+              <div className="bg-[#131D31] border border-slate-800 rounded-xl p-6 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-sky-400" />
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                      1. Resume Improvements & Rewriting Guide
+                    </h3>
+                  </div>
+                  <span className="text-xs text-slate-400">
+                    {decision.feedback.resume_improvements.length} Key Optimizations
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                  {decision.feedback.resume_improvements.map((item, idx) => (
+                    <div key={idx} className="bg-[#0B1120] border border-slate-800 rounded-xl p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-bold text-white tracking-wide flex items-center gap-2">
+                          <span className="w-5 h-5 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center text-[10px] font-bold">
+                            {idx + 1}
+                          </span>
+                          {item.section}
+                        </h4>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                        <div className="p-3 rounded-lg bg-rose-500/5 border border-rose-500/20">
+                          <p className="text-[10px] font-bold text-rose-400 uppercase tracking-wider mb-1">
+                            Identified Issue / Gap
+                          </p>
+                          <p className="text-slate-300">{item.current_issue}</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+                          <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-1">
+                            Actionable Recommendation
+                          </p>
+                          <p className="text-slate-300">{item.recommendation}</p>
+                        </div>
+                      </div>
+
+                      {item.example_before && item.example_after && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs pt-1">
+                          <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 font-mono">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">
+                              ❌ Before (Current Resume)
+                            </span>
+                            <span className="text-slate-400 line-through">"{item.example_before}"</span>
+                          </div>
+                          <div className="p-3 rounded-lg bg-slate-900 border border-emerald-500/30 font-mono">
+                            <span className="text-[10px] font-bold text-emerald-400 uppercase block mb-1">
+                              ✨ Recommended Rewrite
+                            </span>
+                            <span className="text-emerald-300 font-medium">"{item.example_after}"</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Section 2: Required Skills Roadmap */}
+              <div className="bg-[#131D31] border border-slate-800 rounded-xl p-6 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <Target className="w-4 h-4 text-indigo-400" />
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                      2. Target Role Skills Roadmap & Gap Analysis
+                    </h3>
+                  </div>
+                  <span className="text-xs text-slate-400">
+                    {decision.feedback.required_skills.length} Critical Capabilities
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {decision.feedback.required_skills.map((skill, idx) => (
+                    <div key={idx} className="bg-[#0B1120] border border-slate-800 rounded-xl p-4 space-y-3 flex flex-col justify-between">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <GraduationCap className="w-4 h-4 text-indigo-400 shrink-0" />
+                          <h4 className="text-xs font-bold text-white">{skill.skill_category}</h4>
+                        </div>
+                        <div className="space-y-1.5 text-xs">
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase block">Company Expectation</span>
+                            <p className="text-slate-300 text-[11px]">{skill.target_job_expectation}</p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-bold text-amber-400 uppercase block">Current Verified Level</span>
+                            <p className="text-slate-300 text-[11px]">{skill.current_candidate_level}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-2.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-xs">
+                        <span className="text-[10px] font-bold text-indigo-400 uppercase block mb-1">Growth & Mastery Plan</span>
+                        <p className="text-slate-200 text-[11px]">{skill.growth_path}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Section 3: Company & Leadership Expectations */}
+              <div className="bg-[#131D31] border border-slate-800 rounded-xl p-6 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <Briefcase className="w-4 h-4 text-purple-400" />
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                      3. Hiring Company & Engineering Expectations
+                    </h3>
+                  </div>
+                  <span className="text-xs text-slate-400">
+                    {decision.feedback.company_expectations.length} Organizational Pillars
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {decision.feedback.company_expectations.map((exp, idx) => (
+                    <div key={idx} className="bg-[#0B1120] border border-slate-800 rounded-xl p-4 space-y-3">
+                      <h4 className="text-xs font-bold text-purple-300">{exp.pillar}</h4>
+                      <div className="space-y-2 text-xs">
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase block">Company Standard</span>
+                          <p className="text-slate-300 text-[11px]">{exp.company_standard}</p>
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase block">Assessment Finding</span>
+                          <p className="text-slate-300 text-[11px]">{exp.assessment_finding}</p>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                          <span className="text-[10px] font-bold text-purple-400 uppercase block mb-0.5">Interview Preparation Tip</span>
+                          <p className="text-slate-200 text-[11px]">{exp.advice_for_future_interviews}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Section 4: 5-Persona Evaluation Breakdown */}
+              <div className="bg-[#131D31] border border-slate-800 rounded-xl p-6 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-emerald-400" />
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                      4. 5-Persona Evaluation Feedback Breakdown
+                    </h3>
+                  </div>
+                  <span className="text-xs text-slate-400">All Evaluator Perspectives</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {decision.feedback.persona_feedback.map((item, idx) => {
+                    const personaTitle = item.persona
+                      .split('_')
+                      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+                      .join(' ');
+                    return (
+                      <div key={idx} className="bg-[#0B1120] border border-slate-800 rounded-xl p-4 space-y-3 flex flex-col justify-between">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                              {personaTitle}
+                            </span>
+                          </div>
+                          <h4 className="text-xs font-bold text-white tracking-wide">{item.headline}</h4>
+                          <p className="text-xs text-slate-300 leading-relaxed">{item.feedback}</p>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs">
+                          <span className="text-[10px] font-bold text-emerald-400 uppercase block mb-0.5">Key Recommendation</span>
+                          <p className="text-slate-200 text-[11px]">{item.key_recommendation}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="p-12 text-center text-slate-400 bg-[#131D31] rounded-xl border border-slate-800 space-y-3">
+              <Clock className="w-8 h-8 mx-auto text-indigo-400 animate-spin" />
+              <h4 className="text-sm font-bold text-white">Synthesizing Candidate Feedback...</h4>
+              <p className="text-xs text-slate-400 max-w-md mx-auto">
+                Candidate feedback across HR, Skeptic, Hiring Manager, Technical, and General Secretary agents is being compiled.
+              </p>
             </div>
           )}
         </div>

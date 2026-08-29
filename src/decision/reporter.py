@@ -93,9 +93,52 @@ def generate_markdown_report(
     else:
         lines.append("No significant unresolved disagreements remained.\n")
 
+    # Multi-Persona Candidate Feedback & Growth Playbook
+    if report_data.feedback:
+        fb = report_data.feedback
+        lines.append("## 6. Comprehensive Candidate Feedback & Growth Playbook")
+        lines.append(f"> **Overview**: {fb.overall_summary}\n")
+
+        if fb.resume_improvements:
+            lines.append("### 📝 Resume Improvements & Restructuring Guide")
+            for r in fb.resume_improvements:
+                lines.append(f"#### • {r.section}")
+                lines.append(f"- **Identified Gap / Issue**: {r.current_issue}")
+                lines.append(f"- **Actionable Recommendation**: {r.recommendation}")
+                if r.example_before and r.example_after:
+                    lines.append(f"- **Before (Current Resume)**: *\"{r.example_before}\"*")
+                    lines.append(f"- **After (Recommended Rewrite)**: **\"{r.example_after}\"**")
+                lines.append("")
+
+        if fb.required_skills:
+            lines.append("### 🎯 Target Job Skills Roadmap & Gap Analysis")
+            for s in fb.required_skills:
+                lines.append(f"#### • {s.skill_category}")
+                lines.append(f"- **Company Job Expectation**: {s.target_job_expectation}")
+                lines.append(f"- **Current Verified Level**: {s.current_candidate_level}")
+                lines.append(f"- **Growth & Mastery Plan**: {s.growth_path}")
+                lines.append("")
+
+        if fb.company_expectations:
+            lines.append("### 🏢 Hiring Company & Leadership Expectations")
+            for e in fb.company_expectations:
+                lines.append(f"#### • {e.pillar}")
+                lines.append(f"- **Organization Standard**: {e.company_standard}")
+                lines.append(f"- **Evaluation Assessment**: {e.assessment_finding}")
+                lines.append(f"- **Future Interview Advice**: {e.advice_for_future_interviews}")
+                lines.append("")
+
+        if fb.persona_feedback:
+            lines.append("### 👥 5-Persona Evaluation Feedback Breakdown")
+            for p in fb.persona_feedback:
+                lines.append(f"#### {p.persona.replace('_', ' ').title()}: *{p.headline}*")
+                lines.append(f"- **Evaluation Feedback**: {p.feedback}")
+                lines.append(f"- **Key Recommendation**: {p.key_recommendation}")
+                lines.append("")
+
     # Voting History from transcript
     if transcript:
-        lines.append("## 6. Panel Voting History Across Debate Rounds")
+        lines.append("## 7. Panel Voting History Across Debate Rounds")
         lines.append("| Round | Agenda Topic | Technical | HR/Culture | Hiring Manager | Skeptic |")
         lines.append("|---|---|---|---|---|---|")
         for rnd in transcript.rounds:
@@ -108,7 +151,7 @@ def generate_markdown_report(
         lines.append("")
 
     # Evidence Appendix
-    lines.append("## 7. Complete Evidence Traceability Appendix")
+    lines.append("## 8. Complete Evidence Traceability Appendix")
     lines.append("Every claim and concern cited in this report is mapped to its exact source text in the Rosetta index below:\n")
     lines.append("| Citation ID | Verbatim Source Document Record |")
     lines.append("|---|---|")
@@ -198,23 +241,18 @@ def generate_pdf_report(
     bg_color = colors.HexColor("#C6F6D5") if rec_is_hire else colors.HexColor("#FED7D7")
     border_color = colors.HexColor("#38A169") if rec_is_hire else colors.HexColor("#E53E3E")
     
-    summary_data = [
-        [
-            Paragraph("<b>FINAL RECOMMENDATION:</b>", bold_style),
-            Paragraph(f"<b><font size='12' color='{'#22543D' if rec_is_hire else '#742A2A'}'>{report_data.final_recommendation.upper()}</font></b>", bold_style),
-            Paragraph("<b>CONFIDENCE LEVEL:</b>", bold_style),
-            Paragraph(f"<b>{report_data.confidence_level.upper()}</b>", bold_style)
-        ]
-    ]
-    summary_table = Table(summary_data, colWidths=[140, 130, 130, 140])
-    summary_table.setStyle(TableStyle([
+    rec_text = "HIRE" if rec_is_hire else "NO HIRE"
+    rec_box = Table(
+        [[Paragraph(f"<b>FINAL RECOMMENDATION: {rec_text}</b> (Confidence: {report_data.confidence_level.upper()})", bold_style)]],
+        colWidths=[540]
+    )
+    rec_box.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, -1), bg_color),
         ('BOX', (0, 0), (-1, -1), 1.5, border_color),
         ('PADDING', (0, 0), (-1, -1), 8),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE')
     ]))
-    story.append(summary_table)
+    story.append(rec_box)
     story.append(Spacer(1, 10))
 
     # General Secretary Adjudication Rationale
@@ -222,13 +260,15 @@ def generate_pdf_report(
     story.append(Paragraph(report_data.decision_path.original_gs_rationale, body_style))
     story.append(Spacer(1, 8))
 
-    # Override Motion Record if present
+    # Override Motion if filed
     if report_data.decision_path.override_motion_filed and report_data.decision_path.override_motion:
         ov = report_data.decision_path.override_motion
-        story.append(Paragraph("Override Motion Record (PRD §10)", h2_style))
-        ov_text = f"<b>Motion filed by {ov.filed_by.replace('_', ' ').title()}:</b> <i>\"{ov.motion_text}\"</i><br/><b>Outcome:</b> {ov.support_count}/4 votes in favor ({'PASSED' if ov.passed else 'FAILED - Supermajority not reached'}).<br/><b>Rationale:</b> {ov.rationale}"
-        story.append(Paragraph(ov_text, body_style))
-        story.append(Spacer(1, 8))
+        status_txt = "PASSED (VERDICT OVERTURNED)" if ov.passed else "FAILED (ORIGINAL VERDICT UPHELD)"
+        story.append(Paragraph(f"Constitutional Override Motion: {status_txt}", h2_style))
+        story.append(Paragraph(f"<b>Filed by:</b> {ov.filed_by.replace('_', ' ').title()} | <b>Proposed:</b> {ov.proposed_decision.upper()}", body_style))
+        story.append(Paragraph(f"<b>Motion Text:</b> <i>\"{ov.motion_text}\"</i>", body_style))
+        story.append(Paragraph(f"<b>Supermajority Result:</b> {ov.support_count}/4 votes in favor (Needs 3/4) — {ov.rationale}", body_style))
+        story.append(Spacer(1, 6))
 
     # Strengths
     story.append(Paragraph(f"Verified Evidence Strengths ({len(report_data.strengths)})", h2_style))
@@ -253,6 +293,36 @@ def generate_pdf_report(
                 story.append(Paragraph(f"• <i>{p.replace('_', ' ').title()}:</i> {pos}", body_style))
                 story.append(Spacer(1, 2))
         story.append(Spacer(1, 6))
+
+    # Candidate Feedback Section in PDF
+    if report_data.feedback:
+        fb = report_data.feedback
+        story.append(Paragraph("Candidate Feedback & Growth Playbook", h2_style))
+        story.append(Paragraph(f"<b>Summary:</b> {fb.overall_summary}", body_style))
+        story.append(Spacer(1, 4))
+
+        if fb.resume_improvements:
+            story.append(Paragraph("<b>Resume Improvements:</b>", bold_style))
+            for r in fb.resume_improvements:
+                story.append(Paragraph(f"• <b>{r.section}:</b> {r.recommendation}", body_style))
+                if r.example_after:
+                    story.append(Paragraph(f"   <i>Rewrite:</i> \"{r.example_after}\"", body_style))
+                story.append(Spacer(1, 2))
+            story.append(Spacer(1, 4))
+
+        if fb.required_skills:
+            story.append(Paragraph("<b>Target Role Skills Development:</b>", bold_style))
+            for s in fb.required_skills:
+                story.append(Paragraph(f"• <b>{s.skill_category}:</b> {s.growth_path}", body_style))
+                story.append(Spacer(1, 2))
+            story.append(Spacer(1, 4))
+
+        if fb.company_expectations:
+            story.append(Paragraph("<b>Company Expectations & Interview Guidance:</b>", bold_style))
+            for e in fb.company_expectations:
+                story.append(Paragraph(f"• <b>{e.pillar}:</b> {e.advice_for_future_interviews}", body_style))
+                story.append(Spacer(1, 2))
+            story.append(Spacer(1, 6))
 
     # Voting History Table
     if transcript:

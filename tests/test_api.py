@@ -95,12 +95,23 @@ def test_evaluation_artifact_endpoints(tmp_path):
     assert "rounds" in debate_json
     assert len(debate_json["rounds"]) >= 3
 
-    # 5. Decision
+    # 5. Decision & Feedback
     resp_decision = client.get(f"/api/evaluations/{run_id}/decision")
     assert resp_decision.status_code == 200
     dec_json = resp_decision.json()
     assert dec_json["final_recommendation"] in ["hire", "no_hire", "auto_hire", "auto_reject"]
     assert "decision_path" in dec_json
+    assert "feedback" in dec_json
+
+    # 5b. Dedicated Feedback endpoint
+    resp_feedback = client.get(f"/api/evaluations/{run_id}/feedback")
+    assert resp_feedback.status_code == 200
+    fb_json = resp_feedback.json()
+    assert "overall_summary" in fb_json
+    assert "resume_improvements" in fb_json
+    assert "required_skills" in fb_json
+    assert "company_expectations" in fb_json
+    assert "persona_feedback" in fb_json
 
     # 6. Report metadata
     resp_report = client.get(f"/api/evaluations/{run_id}/report")

@@ -19,7 +19,13 @@
 - **General Secretary Deliberation & Adjudication**: Chairs multi-round debate with integer voting, direct rebuttals, and deliberative score shifting ("Opinion Changed"). Synthesizes a non-averaging qualitative hiring verdict.
 - **Constitutional Override Protocol**: Agents can file formal override motions against the General Secretary verdict, requiring a 75% supermajority vote (3/4) to pass.
 - **100% Evidence Traceability**: Every strength, concern, and debate claim resolves back to verbatim source text.
+- **Multi-Persona Candidate Feedback & Growth Playbook**: Generates actionable, persona-grounded improvement plans across 4 critical pillars:
+  - 📝 **Resume Improvements**: Bulletproof Before/After rewrite guidance fixing vague metrics and attribution issues.
+  - 🎯 **Target Job Skills Roadmap**: Concrete growth paths for required framework and system competencies.
+  - 🏢 **Company Expectations**: Assessment of culture alignment, retention stability, and interview preparation advice.
+  - 👥 **5-Persona Breakdown**: Detailed feedback from HR, Skeptic, Hiring Manager, Technical, and General Secretary.
 - **Run-Scoped Workspaces (`RunWorkspace`)**: Complete isolation between evaluation runs preventing global file collisions and enabling parallel multi-candidate evaluations.
+- **Changelog & Enhancements**: See [CHANGELOG.md](file:///Users/ajayanand/desktop/test/promptwars/CHANGELOG.md) for full list of extensions from the original upstream repository.
 
 ---
 

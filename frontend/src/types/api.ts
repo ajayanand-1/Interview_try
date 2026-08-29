@@ -80,6 +80,43 @@ export interface FinalDecisionPath {
   final_confidence: string;
 }
 
+export interface PersonaFeedbackItem {
+  persona: string;
+  headline: string;
+  feedback: string;
+  key_recommendation: string;
+}
+
+export interface ResumeImprovementItem {
+  section: string;
+  current_issue: string;
+  recommendation: string;
+  example_before?: string | null;
+  example_after?: string | null;
+}
+
+export interface RequiredSkillItem {
+  skill_category: string;
+  target_job_expectation: string;
+  current_candidate_level: string;
+  growth_path: string;
+}
+
+export interface CompanyExpectationItem {
+  pillar: string;
+  company_standard: string;
+  assessment_finding: string;
+  advice_for_future_interviews: string;
+}
+
+export interface CandidateFeedback {
+  overall_summary: string;
+  resume_improvements: ResumeImprovementItem[];
+  required_skills: RequiredSkillItem[];
+  company_expectations: CompanyExpectationItem[];
+  persona_feedback: PersonaFeedbackItem[];
+}
+
 export interface FinalDecision {
   candidate_id: string;
   candidate_name: string;
@@ -92,6 +129,7 @@ export interface FinalDecision {
     positions: Record<string, string>;
   }>;
   decision_path: FinalDecisionPath;
+  feedback?: CandidateFeedback | null;
   generated_at: string;
 }
 

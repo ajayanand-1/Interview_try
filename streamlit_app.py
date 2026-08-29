@@ -549,9 +549,9 @@ elif st.session_state["current_nav"] == "🔬 Evaluation Detail":
 
         st.markdown("---")
 
-        # 6 Deep Dive Tabs
-        tab_verdict, tab_rosetta, tab_memos, tab_debate, tab_flow, tab_evidence = st.tabs([
-            "🏆 Executive Verdict", "📖 Rosetta Bible", "🔒 Sealed Memos", "⚔️ Debate Replay", "🧭 Decision Path", "🔍 Evidence Explorer"
+        # 7 Deep Dive Tabs
+        tab_verdict, tab_rosetta, tab_memos, tab_debate, tab_flow, tab_evidence, tab_feedback = st.tabs([
+            "🏆 Executive Verdict", "📖 Rosetta Bible", "🔒 Sealed Memos", "⚔️ Debate Replay", "🧭 Decision Path", "🔍 Evidence Explorer", "💡 Candidate Feedback"
         ])
 
         with tab_verdict:
@@ -790,6 +790,65 @@ elif st.session_state["current_nav"] == "🔬 Evaluation Detail":
                         st.caption(f"Document: {doc_name} | Page: {page_num} | Candidate: {cand_id}")
             else:
                 st.info("Evidence index not found for this run.")
+
+        with tab_feedback:
+            st.markdown("### 💡 Candidate Growth, Resume Improvements & Role Readiness Playbook")
+            fb_data = safe_dict(decision_data.get("feedback"))
+            if fb_data and fb_data.get("overall_summary"):
+                st.info(f"**Strategic Takeaway**: {safe_text(fb_data.get('overall_summary'))}")
+                
+                # 1. Resume Improvements
+                res_imps = safe_list(fb_data.get("resume_improvements"))
+                if res_imps:
+                    st.markdown("#### 📝 1. Resume Improvements & Rewriting Guide")
+                    for r in res_imps:
+                        if isinstance(r, dict):
+                            with st.expander(f"📌 {safe_text(r.get('section'))}", expanded=True):
+                                st.markdown(f"**Identified Gap / Issue**: {safe_text(r.get('current_issue'))}")
+                                st.markdown(f"**Actionable Recommendation**: {safe_text(r.get('recommendation'))}")
+                                b_txt = r.get("example_before")
+                                a_txt = r.get("example_after")
+                                if b_txt and a_txt:
+                                    c_b, c_a = st.columns(2)
+                                    with c_b:
+                                        st.error(f"**❌ Before (Current Resume)**:\n\n*\"{b_txt}\"*")
+                                    with c_a:
+                                        st.success(f"**✨ Recommended Rewrite**:\n\n**\"{a_txt}\"**")
+
+                # 2. Required Skills
+                req_skills = safe_list(fb_data.get("required_skills"))
+                if req_skills:
+                    st.markdown("#### 🎯 2. Target Job Skills Roadmap & Gap Analysis")
+                    for s in req_skills:
+                        if isinstance(s, dict):
+                            with st.expander(f"🎓 {safe_text(s.get('skill_category'))}"):
+                                st.markdown(f"- **Company Expectation**: {safe_text(s.get('target_job_expectation'))}")
+                                st.markdown(f"- **Current Verified Level**: {safe_text(s.get('current_candidate_level'))}")
+                                st.markdown(f"- **Growth & Mastery Plan**: {safe_text(s.get('growth_path'))}")
+
+                # 3. Company Expectations
+                comp_exps = safe_list(fb_data.get("company_expectations"))
+                if comp_exps:
+                    st.markdown("#### 🏢 3. Hiring Company & Engineering Expectations")
+                    for e in comp_exps:
+                        if isinstance(e, dict):
+                            with st.expander(f"💼 {safe_text(e.get('pillar'))}"):
+                                st.markdown(f"- **Company Standard**: {safe_text(e.get('company_standard'))}")
+                                st.markdown(f"- **Assessment Finding**: {safe_text(e.get('assessment_finding'))}")
+                                st.markdown(f"- **Interview Preparation Advice**: {safe_text(e.get('advice_for_future_interviews'))}")
+
+                # 4. Persona Feedback
+                per_fb = safe_list(fb_data.get("persona_feedback"))
+                if per_fb:
+                    st.markdown("#### 👥 4. 5-Persona Evaluation Feedback Breakdown")
+                    for p in per_fb:
+                        if isinstance(p, dict):
+                            p_title = safe_title(p.get("persona", "Agent"))
+                            with st.expander(f"👤 {p_title} — {safe_text(p.get('headline'))}"):
+                                st.markdown(f"**Feedback**: {safe_text(p.get('feedback'))}")
+                                st.markdown(f"**Key Recommendation**: {safe_text(p.get('key_recommendation'))}")
+            else:
+                st.caption("Candidate feedback is being synthesized.")
 
 
 # =====================================================================

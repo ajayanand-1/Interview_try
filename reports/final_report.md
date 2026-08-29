@@ -1,6 +1,6 @@
 # Executive Hiring Recommendation: Rohan Malhotra
 **Target Role**: `AI Engineer — Agentic Systems` | **Candidate ID**: `rohan_malhotra`
-**Generated**: 2026-08-28 09:52:47 UTC
+**Generated**: 2026-08-29 11:18:03 UTC
 
 ---
 ## 1. Executive Summary & Final Verdict
@@ -31,7 +31,82 @@
 - **Hiring Manager Agent**: Argues an engineer who departs after 7 months [R-EXP-01, T-A10] inflicts severe net negative ROI.
 - **Skeptic Agent**: Argues that unverified error metrics [T-A3] and resume inflation [T-A7] create catastrophic platform debt.
 
-## 6. Panel Voting History Across Debate Rounds
+## 6. Comprehensive Candidate Feedback & Growth Playbook
+> **Overview**: Rohan Malhotra demonstrated strong domain familiarity in freight logistics and practical experience with LangGraph and model routing. However, he received a NO HIRE recommendation due to critical concerns regarding attribution honesty (overstating solo architecture), high flight risk tenure patterns (3 jobs in 3.5 years, 7-month stay), and lack of rigorous quantitative observability. To improve, he must practice precise collaborative attribution, build multi-quarter tenure stability, and implement formal benchmark evaluation suites.
+
+### 📝 Resume Improvements & Restructuring Guide
+#### • Attribution Integrity & Collaborative Scope
+- **Identified Gap / Issue**: Resume claimed 'Sole architect' of freight exception system [R-EXP-03], but conceded in interview that teammate Priya built most of the production system [T-A7].
+- **Actionable Recommendation**: Accurately describe your contribution within team context; never claim solo ownership of multi-engineer platform projects.
+- **Before (Current Resume)**: *"Sole architect of multi-agent freight exception handling platform using LangGraph."*
+- **After (Recommended Rewrite)**: **"Co-developed multi-agent freight exception handling platform in a 3-person engineering squad; personally architected the model routing layer and document parser modules."**
+
+#### • Quantitative Observability vs. Vague Metrics
+- **Identified Gap / Issue**: Claimed cost and error optimizations without instrumented metrics, telemetry logs, or evaluation benchmarks for reviewer agent overrides [T-A3, T-A4].
+- **Actionable Recommendation**: Include concrete latency distributions (p95/p99), token cost savings with dollar figures, and automated eval dataset results.
+- **Before (Current Resume)**: *"Tuned model routing across GPT-4 and SLMs to reduce costs."*
+- **After (Recommended Rewrite)**: **"Engineered dynamic model router across GPT-4o and fine-tuned Llama-3-8B, cutting per-request token costs by 48% while maintaining 94.2% extraction accuracy across 10,000 daily EDI transactions."**
+
+#### • Tenure Narrative & Lifecycle Completion
+- **Identified Gap / Issue**: Frequent job transitions (3 roles in 3.5 years, departing Voltrix after only 7 months [R-EXP-01, T-A10]) creates severe flight-risk flags for hiring managers.
+- **Actionable Recommendation**: Provide clear contextual framing around project completion, acquisition, or scope transitions, and commit to longer tenures.
+- **Before (Current Resume)**: *"AI Engineer at Voltrix (7 mos)"*
+- **After (Recommended Rewrite)**: **"AI Engineer (Contract/Platform Initiative) at Voltrix (7 mos) — Delivered v1 multi-agent freight extraction pipeline before planned platform handover."**
+
+### 🎯 Target Job Skills Roadmap & Gap Analysis
+#### • Production Agent Observability & Tracing
+- **Company Job Expectation**: Deep instrumentation using OpenTelemetry, LangSmith, Arize Phoenix, or custom tracing to monitor agent tool loops, latency, and cost in real-time.
+- **Current Verified Level**: Ad-hoc threshold adjustments without structured logging or automated tracing [T-A4].
+- **Growth & Mastery Plan**: Implement comprehensive OpenTelemetry distributed tracing and metrics dashboards for every agent deliberation turn and tool invocation.
+
+#### • Formal Multi-Agent Evaluation & Benchmark Harnesses
+- **Company Job Expectation**: Statistical evaluation frameworks measuring hallucination, tool call failure rates, and reviewer agent override precision against gold-standard sets.
+- **Current Verified Level**: Lacks quantitative evaluation metrics for agent error recovery [T-A3].
+- **Growth & Mastery Plan**: Build an automated evaluation harness with synthetic edge-case generation and regression scoring for agent supervisor loops.
+
+#### • High-Availability Production On-Call & Reliability
+- **Company Job Expectation**: Proven track record operating mission-critical 24/7 services, managing SEV-1 incidents, and executing automated rollbacks.
+- **Current Verified Level**: Untested in high-incident production environments despite on-call claims [T-A9].
+- **Growth & Mastery Plan**: Participate in formal on-call rotations, author post-mortems with preventative action items, and design circuit breakers for downstream LLM outages.
+
+### 🏢 Hiring Company & Leadership Expectations
+#### • Attribution Honesty & Team Humility
+- **Organization Standard**: Hiring panels rigorously cross-examine resume claims. Exaggerating contributions or claiming solo credit damages credibility irreparably.
+- **Evaluation Assessment**: Critical gap. Candidate claimed 'Sole architect' [R-EXP-03] but conceded teammate Priya built most of the architecture [T-A7].
+- **Future Interview Advice**: Always speak about team achievements using 'we' for collective success and 'I' specifically for individual modules you personally designed and coded.
+
+#### • Tenure Stability & Platform Investment ROI
+- **Organization Standard**: Companies invest 3-6 months onboarding senior engineers and expect 2+ years of sustained platform development to realize positive ROI.
+- **Evaluation Assessment**: High risk. 3 jobs in 3.5 years with a 7-month departure from Voltrix [R-EXP-01, T-A10].
+- **Future Interview Advice**: Demonstrate commitment to long-term ownership by staying at your next role for 2+ years and showing sustained feature evolution across multiple releases.
+
+#### • Scientific Rigor Over Heuristic Guesswork
+- **Organization Standard**: AI systems in freight logistics require deterministic verification and auditable failure boundaries.
+- **Evaluation Assessment**: Gap identified. Model routing was tuned via informal intuition rather than formal benchmark Pareto curves [T-A4].
+- **Future Interview Advice**: Present decisions using data: show tradeoff graphs between cost, latency, and accuracy with statistical confidence intervals.
+
+### 👥 5-Persona Evaluation Feedback Breakdown
+#### Hr Culture Agent: *High Flight Risk & Short Tenure Pattern*
+- **Evaluation Feedback**: Tenure history (3 jobs in 3.5 years, departing after 7 months [T-A10]) presents substantial team friction and retention costs.
+- **Key Recommendation**: Commit to long-term project lifecycles (24+ months) to establish credibility as a reliable engineering partner.
+
+#### Skeptic Agent: *Attribution Discrepancy Undermined Candidacy*
+- **Evaluation Feedback**: Cross-examination revealed 'Sole architect' claim [R-EXP-03] was exaggerated over teammate Priya's contributions [T-A7].
+- **Key Recommendation**: Adopt radical honesty regarding team vs. individual contributions on all future resumes and interviews.
+
+#### Hiring Manager Agent: *Negative Retention ROI for Core Role*
+- **Evaluation Feedback**: Onboarding overhead for a complex freight platform cannot be amortized over a 7-month tenure.
+- **Key Recommendation**: Demonstrate multi-year ownership of complex systems from design through sustained maintenance.
+
+#### Technical Agent: *Good Framework Knowledge Hindered by Lack of Evaluation Rigor*
+- **Evaluation Feedback**: Demonstrated practical LangGraph/CrewAI familiarity [R-EXP-01], but lacked rigorous observability and automated error metrics [T-A3].
+- **Key Recommendation**: Instrument all agent workflows with automated evaluation harnesses (e.g. LangSmith, RAGAS) and distributed tracing.
+
+#### General Secretary: *Definitive No Hire Due to Attribution & Retention Risks*
+- **Evaluation Feedback**: While technical knowledge in freight agents is noted, credibility gaps and tenure instability make this unviable for a core hire.
+- **Key Recommendation**: Focus on building verifiable production systems with transparent attribution and long-term tenure track records.
+
+## 7. Panel Voting History Across Debate Rounds
 | Round | Agenda Topic | Technical | HR/Culture | Hiring Manager | Skeptic |
 |---|---|---|---|---|---|
 | Round 1 | Multi-Agent Architectural Depth vs. 'Sole Architect' Credibility Walkback | 7/10 | 4/10 | 5/10 | 3/10 |
@@ -39,7 +114,7 @@
 | Round 3 | Retention Risk, Job-Hopping Tenure Pattern (3 Jobs in 3.5 Years), and On-Call Reliability | 6/10 | 3/10 | 4/10 | 3/10 |
 | Round 4 | Final Deliberation and Maturity Consolidation | 6/10 | 3/10 | 4/10 | 3/10 |
 
-## 7. Complete Evidence Traceability Appendix
+## 8. Complete Evidence Traceability Appendix
 Every claim and concern cited in this report is mapped to its exact source text in the Rosetta index below:
 
 | Citation ID | Verbatim Source Document Record |

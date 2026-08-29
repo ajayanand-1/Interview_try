@@ -4,6 +4,7 @@ import {
   AgentMemo,
   DebateTranscript,
   FinalDecision,
+  CandidateFeedback,
   ReportSummary,
   EvaluationStatusType,
   EvaluationPhaseType,
@@ -73,6 +74,8 @@ export const api = {
   getDebate: (runId: string) => request<DebateTranscript>(`/api/evaluations/${runId}/debate`),
 
   getDecision: (runId: string) => request<FinalDecision>(`/api/evaluations/${runId}/decision`),
+
+  getFeedback: (runId: string) => request<CandidateFeedback>(`/api/evaluations/${runId}/feedback`),
 
   getReport: (runId: string) => request<ReportSummary>(`/api/evaluations/${runId}/report`),
 
