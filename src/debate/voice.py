@@ -14,22 +14,39 @@ if str(_REPO_ROOT) not in sys.path:
 
 from src.config import settings
 from src.models.debate import DebateTranscript
+from src.agents.personas import PERSONA_PROFILES
 
-# Per-persona voice mapping using macOS native speech synthesis voices
+# Per-persona fixed voice mapping: Exactly 2 Female and 2 Male agents
 VOICE_MAP: Dict[str, str] = {
-    "general_secretary": "Daniel",        # British authoritative chair
-    "technical_agent": "Alex",            # Methodical engineer
-    "hr_culture_agent": "Samantha",       # Empathetic HR partner
-    "hiring_manager_agent": "Fred",       # Executive hiring manager
-    "skeptic_agent": "Ralph",             # Sharp skeptical cross-examiner
+    "general_secretary": "Daniel",        # Male: British authoritative chair
+    "technical_agent": "Karen",           # Female: Methodical, precise AI architect
+    "hr_culture_agent": "Oliver",         # Male: Empathetic, warm culture lead
+    "hiring_manager_agent": "Fred",       # Male: Direct, pragmatic executive VP
+    "skeptic_agent": "Samantha",          # Female: Sharp, forensic investigative critic
 }
 
 
+def get_persona_voice_meta(persona: str) -> Dict[str, Any]:
+    """Retrieve full voice and persona profile metadata."""
+    prof = PERSONA_PROFILES.get(persona, {})
+    return {
+        "persona": persona,
+        "name": prof.get("name", persona.replace("_", " ").title()),
+        "gender": prof.get("gender", "neutral"),
+        "title": prof.get("title", "Evaluator"),
+        "voice_macos": prof.get("voice_macos", VOICE_MAP.get(persona, "Daniel")),
+        "pitch": prof.get("pitch", 1.0),
+        "rate": prof.get("rate", 1.0)
+    }
+
+
 def play_voice_turn(persona: str, statement: str, dry_run: bool = False) -> None:
-    """Synthesize and play back a turn using persona's assigned voice."""
-    voice = VOICE_MAP.get(persona, "Daniel")
-    clean_persona = persona.replace("_", " ").title()
-    print(f"🎙 [{clean_persona} (Voice: {voice})]: \"{statement}\"")
+    """Synthesize and play back a turn using persona's assigned fixed voice."""
+    meta = get_persona_voice_meta(persona)
+    voice = meta["voice_macos"]
+    name = meta["name"]
+    gender_tag = "♀ Female" if meta["gender"] == "female" else "♂ Male"
+    print(f"🎙 [{name} ({gender_tag}, Voice: {voice})]: \"{statement}\"")
     
     if not dry_run and shutil.which("say"):
         try:

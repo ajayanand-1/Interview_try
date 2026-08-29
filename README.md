@@ -10,20 +10,20 @@
 
 ## 🚀 Key Innovations & Architecture
 
-- **Project Rosetta ("Candidate Profile Bible")**: Ingests arbitrary resumes and transcripts, detects sections, and indexes every claim with stable citation IDs (`[R-EXP-01]`, `[T-A1]`, etc.).
-- **Strict Persona Isolation**: 4 domain agents evaluate candidates in zero-leakage isolation before deliberation:
-  1. `Technical Agent` (Architecture, fundamentals, technical depth)
-  2. `HR / Culture Agent` (Friction, accountability, cultural alignment with mandatory contrarian check)
-  3. `Hiring Manager Agent` (Velocity, ramp-up ROI, retention economics)
-  4. `Skeptic Agent` (Cross-examination, resume inflation detection, attribution auditing)
-- **General Secretary Deliberation & Adjudication**: Chairs multi-round debate with integer voting, direct rebuttals, and deliberative score shifting ("Opinion Changed"). Synthesizes a non-averaging qualitative hiring verdict.
-- **Constitutional Override Protocol**: Agents can file formal override motions against the General Secretary verdict, requiring a 75% supermajority vote (3/4) to pass.
-- **100% Evidence Traceability**: Every strength, concern, and debate claim resolves back to verbatim source text.
-- **Multi-Persona Candidate Feedback & Growth Playbook**: Generates actionable, persona-grounded improvement plans across 4 critical pillars:
-  - 📝 **Resume Improvements**: Bulletproof Before/After rewrite guidance fixing vague metrics and attribution issues.
-  - 🎯 **Target Job Skills Roadmap**: Concrete growth paths for required framework and system competencies.
-  - 🏢 **Company Expectations**: Assessment of culture alignment, retention stability, and interview preparation advice.
-  - 👥 **5-Persona Breakdown**: Detailed feedback from HR, Skeptic, Hiring Manager, Technical, and General Secretary.
+- **Fixed AI Persona & Voice Roster (2 Female / 2 Male)**: Every agent has a distinct, permanent identity and fixed synthesis voice:
+  1. `Dr. Maya Lin` (Technical Agent, ♀ Female, Karen voice) — Lead AI Systems Architect
+  2. `Marcus Vance` (HR / Culture Agent, ♂ Male, Oliver voice) — Head of People & Culture
+  3. `David Sterling` (Hiring Manager, ♂ Male, Fred voice) — VP Engineering & Product ROI
+  4. `Dr. Rachel Thorne` (Skeptic Agent, ♀ Female, Samantha voice) — Principal Forensic Auditor
+  5. `Arthur Pendelton` (General Secretary, ♂ Male, Daniel voice) — Panel Moderator & Adjudicator
+- **Parliamentary Civil Deliberation (No Overlapping)**: Structured turn-taking covering 4 mandatory pillars:
+  - 🎯 **Core Problem**: Technical, organizational, or economic challenge.
+  - 📋 **Company Expectation**: Role competency and delivery standards.
+  - ⚖️ **Pros & Cons**: Grounded evidence analyzing strengths and risk factors.
+  - 💡 **Viable Solutions**: Actionable onboarding remedies, pair programming, and CI evaluation harnesses.
+- **Interactive Voice Stream Player**: Web Speech API integration in React SPA for sequential, non-overlapping audio deliberation streaming.
+- **Universal Responsive Design**: Seamless experience across mobile, tablet, and desktop with collapsible drawer navigation and adaptive layouts.
+- **Multi-Persona Candidate Feedback & Growth Playbook**: Generates actionable, persona-grounded improvement plans across Resume Improvements (Before/After diffs), Skills Roadmap, and Company Expectations.
 - **Run-Scoped Workspaces (`RunWorkspace`)**: Complete isolation between evaluation runs preventing global file collisions and enabling parallel multi-candidate evaluations.
 - **Changelog & Enhancements**: See [CHANGELOG.md](file:///Users/ajayanand/desktop/test/promptwars/CHANGELOG.md) for full list of extensions from the original upstream repository.
 

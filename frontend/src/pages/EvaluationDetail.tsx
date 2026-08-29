@@ -28,6 +28,12 @@ import {
   Briefcase,
   Target,
   FileText,
+  Play,
+  Square,
+  Volume2,
+  Mic,
+  Shield,
+  User,
 } from 'lucide-react';
 import { api } from '../api/client';
 import {
@@ -40,6 +46,80 @@ import {
 import { StatusBadge } from '../components/common/StatusBadge';
 import { CitationBadge } from '../components/common/CitationBadge';
 import { CitationModal } from '../components/common/CitationModal';
+
+export const PERSONA_ROSTER: Record<string, {
+  name: string;
+  role: string;
+  gender: 'Female' | 'Male';
+  voiceMac: string;
+  pitch: number;
+  rate: number;
+  badgeBg: string;
+  textColor: string;
+  borderColor: string;
+  description: string;
+}> = {
+  technical_agent: {
+    name: 'Dr. Maya Lin',
+    role: 'Lead AI Systems Architect',
+    gender: 'Female',
+    voiceMac: 'Karen',
+    pitch: 1.05,
+    rate: 1.0,
+    badgeBg: 'bg-cyan-500/10',
+    textColor: 'text-cyan-400',
+    borderColor: 'border-cyan-500/30',
+    description: 'Systematic, analytical, focused on software architecture, vector indexing, framework internals, and execution correctness.'
+  },
+  hr_culture_agent: {
+    name: 'Marcus Vance',
+    role: 'Head of People & Organizational Culture',
+    gender: 'Male',
+    voiceMac: 'Oliver',
+    pitch: 0.95,
+    rate: 0.98,
+    badgeBg: 'bg-emerald-500/10',
+    textColor: 'text-emerald-400',
+    borderColor: 'border-emerald-500/30',
+    description: 'Empathetic, psychologically perceptive, values team safety, blameless communication, accountability during incidents.'
+  },
+  hiring_manager_agent: {
+    name: 'David Sterling',
+    role: 'VP of Engineering & Product Delivery',
+    gender: 'Male',
+    voiceMac: 'Fred',
+    pitch: 0.9,
+    rate: 1.02,
+    badgeBg: 'bg-amber-500/10',
+    textColor: 'text-amber-400',
+    borderColor: 'border-amber-500/30',
+    description: 'Executive, ROI-focused, strategic, evaluating payroll risk, ramp-up schedules, retention horizons, and velocity.'
+  },
+  skeptic_agent: {
+    name: 'Dr. Rachel Thorne',
+    role: 'Principal Forensic Auditor & Critic',
+    gender: 'Female',
+    voiceMac: 'Samantha',
+    pitch: 1.1,
+    rate: 0.98,
+    badgeBg: 'bg-rose-500/10',
+    textColor: 'text-rose-400',
+    borderColor: 'border-rose-500/30',
+    description: 'Forensic auditor, relentless evidence auditor, searching for unverified claims, benchmark omissions, and attribution gaps.'
+  },
+  general_secretary: {
+    name: 'Arthur Pendelton',
+    role: 'General Secretary & Panel Chair',
+    gender: 'Male',
+    voiceMac: 'Daniel',
+    pitch: 0.85,
+    rate: 0.95,
+    badgeBg: 'bg-indigo-500/10',
+    textColor: 'text-indigo-400',
+    borderColor: 'border-indigo-500/30',
+    description: 'Impartial, structured, ensuring parliamentary order, enforcing civil dialogue, managing round timers, and synthesizing verdicts.'
+  }
+};
 
 type TabType = 'overview' | 'rosetta' | 'memos' | 'debate' | 'decision_path' | 'feedback';
 
@@ -55,6 +135,105 @@ export const EvaluationDetail: React.FC = () => {
 
   // Evidence Explorer Modal state
   const [selectedCitationId, setSelectedCitationId] = useState<string | null>(null);
+
+  // Audio Speech Playback state
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [currentSpeakingTurn, setCurrentSpeakingTurn] = useState<{ roundIdx: number; turnIdx: number } | null>(null);
+
+  const stopAudioPlayback = () => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsPlayingAudio(false);
+    setCurrentSpeakingTurn(null);
+  };
+
+  const playDebateAudio = () => {
+    if (!debate || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    stopAudioPlayback();
+    setIsPlayingAudio(true);
+
+    const allTurns: { roundIdx: number; turnIdx: number; persona: string; statement: string }[] = [];
+    debate.rounds.forEach((rnd, rIdx) => {
+      rnd.turns.forEach((turn, tIdx) => {
+        allTurns.push({
+          roundIdx: rIdx,
+          turnIdx: tIdx,
+          persona: turn.persona,
+          statement: turn.statement.replace(/\[.*?\]/g, '').replace(/[*_#]/g, ''),
+        });
+      });
+    });
+
+    const availableVoices = window.speechSynthesis.getVoices();
+    let step = 0;
+
+    const speakNext = () => {
+      if (step >= allTurns.length) {
+        setIsPlayingAudio(false);
+        setCurrentSpeakingTurn(null);
+        return;
+      }
+
+      const item = allTurns[step];
+      setCurrentSpeakingTurn({ roundIdx: item.roundIdx, turnIdx: item.turnIdx });
+
+      const personaInfo = PERSONA_ROSTER[item.persona] || PERSONA_ROSTER.general_secretary;
+      const utterance = new SpeechSynthesisUtterance(item.statement);
+      utterance.pitch = personaInfo.pitch;
+      utterance.rate = personaInfo.rate;
+
+      if (personaInfo.gender === 'Female') {
+        const femaleVoice =
+          availableVoices.find(
+            (v) =>
+              (v.name.toLowerCase().includes('karen') ||
+                v.name.toLowerCase().includes('samantha') ||
+                v.name.toLowerCase().includes('victoria') ||
+                v.name.toLowerCase().includes('zira') ||
+                v.name.toLowerCase().includes('female')) &&
+              v.lang.startsWith('en')
+          ) || availableVoices.find((v) => v.lang.startsWith('en'));
+        if (femaleVoice) utterance.voice = femaleVoice;
+      } else {
+        const maleVoice =
+          availableVoices.find(
+            (v) =>
+              (v.name.toLowerCase().includes('daniel') ||
+                v.name.toLowerCase().includes('alex') ||
+                v.name.toLowerCase().includes('fred') ||
+                v.name.toLowerCase().includes('oliver') ||
+                v.name.toLowerCase().includes('male') ||
+                v.name.toLowerCase().includes('david')) &&
+              v.lang.startsWith('en')
+          ) || availableVoices.find((v) => v.lang.startsWith('en'));
+        if (maleVoice) utterance.voice = maleVoice;
+      }
+
+      utterance.onend = () => {
+        step++;
+        speakNext();
+      };
+
+      utterance.onerror = () => {
+        step++;
+        speakNext();
+      };
+
+      window.speechSynthesis.speak(utterance);
+    };
+
+    speakNext();
+  };
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -534,11 +713,83 @@ export const EvaluationDetail: React.FC = () => {
       {/* Tab 4: Debate Replay & Deliberation Deltas */}
       {activeTab === 'debate' && (
         <div className="space-y-6">
+          {/* Civil Debate & Voice Control Panel */}
+          <div className="bg-[#131D31] border border-slate-800 rounded-xl p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Volume2 className="w-5 h-5 text-indigo-400" />
+                  <h3 className="text-sm sm:text-base font-bold text-white">Parliamentary Civil Debate Audio</h3>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Sequential, non-overlapping deliberation with distinct fixed voices across 2 female and 2 male AI agents.
+                </p>
+              </div>
+
+              {/* Audio Controls */}
+              <div className="flex items-center gap-2.5">
+                {!isPlayingAudio ? (
+                  <button
+                    onClick={playDebateAudio}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
+                  >
+                    <Play className="w-4 h-4 fill-white" />
+                    <span>Play Voice Stream</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={stopAudioPlayback}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-lg shadow-md shadow-rose-600/20 transition-all cursor-pointer"
+                  >
+                    <Square className="w-3.5 h-3.5 fill-white" />
+                    <span>Stop Voice Stream</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Speaking Status Indicator */}
+            {isPlayingAudio && currentSpeakingTurn && (
+              <div className="flex items-center gap-3 p-3 bg-indigo-950/40 border border-indigo-500/30 rounded-lg text-xs animate-pulse">
+                <div className="flex items-center gap-1">
+                  <span className="w-1.5 h-3 bg-indigo-400 rounded-full animate-bounce"></span>
+                  <span className="w-1.5 h-4 bg-indigo-300 rounded-full animate-bounce [animation-delay:0.15s]"></span>
+                  <span className="w-1.5 h-2 bg-indigo-400 rounded-full animate-bounce [animation-delay:0.3s]"></span>
+                </div>
+                <span className="text-indigo-200 font-medium">
+                  Currently Speaking: Round {currentSpeakingTurn.roundIdx + 1}, Turn {currentSpeakingTurn.turnIdx + 1}
+                </span>
+              </div>
+            )}
+
+            {/* 5-Persona Evaluator Roster Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-1">
+              {Object.entries(PERSONA_ROSTER).map(([pKey, pInfo]) => (
+                <div
+                  key={pKey}
+                  className={`p-3 rounded-lg border bg-[#0B1120] ${pInfo.borderColor} space-y-1.5 transition-all`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded font-mono ${pInfo.badgeBg} ${pInfo.textColor}`}>
+                      {pInfo.gender === 'Female' ? '♀ Female' : '♂ Male'}
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-400">{pInfo.voiceMac}</span>
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-bold text-white">{pInfo.name}</h5>
+                    <p className="text-[10px] text-slate-400 leading-tight">{pInfo.role}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Structured Debate Rounds */}
           {debate ? (
             <div className="space-y-6">
-              {debate.rounds.map((rnd) => (
-                <div key={rnd.round_num} className="bg-[#131D31] border border-slate-800 rounded-xl p-6 space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              {debate.rounds.map((rnd, rIdx) => (
+                <div key={rnd.round_num} className="bg-[#131D31] border border-slate-800 rounded-xl p-4 sm:p-6 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
                     <div>
                       <span className="text-[11px] font-mono font-bold text-indigo-400 uppercase tracking-wider">
                         Round {rnd.round_num}
@@ -547,68 +798,124 @@ export const EvaluationDetail: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Turns Dialogue with Rebuttal Badges */}
+                  {/* Turns Dialogue with Rebuttal Badges & Discussion Pillars */}
                   <div className="space-y-3">
-                    {rnd.turns.map((turn, tIdx) => (
-                      <div
-                        key={tIdx}
-                        className={`p-3.5 rounded-lg border text-xs leading-relaxed ${
-                          turn.persona === 'general_secretary'
-                            ? 'bg-indigo-950/20 border-indigo-500/20 text-slate-200'
-                            : 'bg-[#0B1120] border-slate-800 text-slate-300'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1.5">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-white capitalize">{turn.persona.replace(/_/g, ' ')}</span>
-                            {turn.responds_to && (
-                              <span className="text-[10px] px-2 py-0.5 rounded bg-rose-500/10 text-rose-300 border border-rose-500/20 font-semibold">
-                                Rebutting {turn.responds_to.replace(/_/g, ' ')}
+                    {rnd.turns.map((turn, tIdx) => {
+                      const speaker = PERSONA_ROSTER[turn.persona] || PERSONA_ROSTER.general_secretary;
+                      const isCurrentSpeaking =
+                        isPlayingAudio &&
+                        currentSpeakingTurn?.roundIdx === rIdx &&
+                        currentSpeakingTurn?.turnIdx === tIdx;
+
+                      // Detect discussion pillars
+                      const hasProblem = turn.statement.toLowerCase().includes('problem');
+                      const hasExpectation = turn.statement.toLowerCase().includes('expectation');
+                      const hasProsCons =
+                        turn.statement.toLowerCase().includes('pro') ||
+                        turn.statement.toLowerCase().includes('con') ||
+                        turn.statement.toLowerCase().includes('strength');
+                      const hasSolution =
+                        turn.statement.toLowerCase().includes('solution') ||
+                        turn.statement.toLowerCase().includes('ramp') ||
+                        turn.statement.toLowerCase().includes('pairing') ||
+                        turn.statement.toLowerCase().includes('checklist');
+
+                      return (
+                        <div
+                          key={tIdx}
+                          className={`p-4 rounded-xl border text-xs leading-relaxed transition-all ${
+                            isCurrentSpeaking
+                              ? 'ring-2 ring-indigo-500 bg-indigo-950/40 border-indigo-400/50 shadow-lg'
+                              : turn.persona === 'general_secretary'
+                              ? 'bg-indigo-950/20 border-indigo-500/20 text-slate-200'
+                              : 'bg-[#0B1120] border-slate-800/80 text-slate-300'
+                          }`}
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-white text-sm">{speaker.name}</span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${speaker.badgeBg} ${speaker.textColor} font-semibold`}>
+                                {speaker.gender === 'Female' ? '♀ Female' : '♂ Male'} ({speaker.voiceMac})
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-mono hidden md:inline">
+                                • {speaker.role}
+                              </span>
+
+                              {turn.responds_to && (
+                                <span className="text-[10px] px-2 py-0.5 rounded bg-rose-500/10 text-rose-300 border border-rose-500/20 font-semibold">
+                                  Rebutting {PERSONA_ROSTER[turn.responds_to]?.name || turn.responds_to.replace(/_/g, ' ')}
+                                </span>
+                              )}
+                              {turn.is_counter_question_response && (
+                                <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                                  Counter-Question Response
+                                </span>
+                              )}
+                            </div>
+
+                            {turn.cites && turn.cites.length > 0 && (
+                              <div className="flex items-center gap-1 flex-wrap">
+                                {turn.cites.map((c) => (
+                                  <CitationBadge
+                                    key={c}
+                                    citationId={c}
+                                    onClick={(id) => setSelectedCitationId(id)}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          <p className="text-slate-200 leading-relaxed mb-2.5">{turn.statement}</p>
+
+                          {/* 4 Pillars Tags Footer */}
+                          <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-slate-800/60">
+                            {hasProblem && (
+                              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-rose-500/10 text-rose-300 border border-rose-500/20">
+                                🎯 Problem Analyzed
                               </span>
                             )}
-                            {turn.is_counter_question_response && (
-                              <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
-                                Counter-Question Response
+                            {hasExpectation && (
+                              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20">
+                                📋 Role Expectation
+                              </span>
+                            )}
+                            {hasProsCons && (
+                              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                                ⚖️ Pros & Cons Grounded
+                              </span>
+                            )}
+                            {hasSolution && (
+                              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                                💡 Viable Solution Proposed
                               </span>
                             )}
                           </div>
-                          {turn.cites && turn.cites.length > 0 && (
-                            <div className="flex items-center gap-1">
-                              {turn.cites.map((c) => (
-                                <CitationBadge
-                                  key={c}
-                                  citationId={c}
-                                  onClick={(id) => setSelectedCitationId(id)}
-                                />
-                              ))}
-                            </div>
-                          )}
                         </div>
-                        <p>{turn.statement}</p>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   {/* Deliberation Opinion Shifts Callout (PRD §9) */}
                   {rnd.score_deltas_from_previous_round && Object.keys(rnd.score_deltas_from_previous_round).length > 0 && (
-                    <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg text-xs space-y-1">
+                    <div className="p-3.5 bg-amber-500/5 border border-amber-500/20 rounded-lg text-xs space-y-1">
                       <div className="flex items-center gap-1.5 text-amber-400 font-semibold mb-1">
                         <TrendingUp className="w-3.5 h-3.5" />
                         <span>Deliberation Score Shifts (Opinion Changed)</span>
                       </div>
                       {Object.entries(rnd.score_deltas_from_previous_round).map(([p, reason]) => (
                         <div key={p} className="text-slate-300">
-                          <b className="capitalize text-slate-200">{p.replace(/_/g, ' ')}:</b> {reason}
+                          <b className="capitalize text-slate-200">{PERSONA_ROSTER[p]?.name || p.replace(/_/g, ' ')}:</b> {reason}
                         </div>
                       ))}
                     </div>
                   )}
 
                   {/* Round Votes Table */}
-                  <div className="p-3 bg-[#0B1120] rounded-lg border border-slate-800 flex items-center justify-around font-mono text-xs">
+                  <div className="p-3.5 bg-[#0B1120] rounded-lg border border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-xs">
                     {Object.entries(rnd.votes).map(([persona, score]) => (
-                      <div key={persona} className="text-center">
-                        <div className="text-[10px] text-slate-400 capitalize">{persona.replace('_agent', '')}</div>
+                      <div key={persona} className="text-center p-2 rounded bg-[#131D31]/60 border border-slate-800/60">
+                        <div className="text-[10px] text-slate-400">{PERSONA_ROSTER[persona]?.name || persona.replace('_agent', '')}</div>
                         <div className="text-sm font-bold text-indigo-400">{score}/10</div>
                       </div>
                     ))}

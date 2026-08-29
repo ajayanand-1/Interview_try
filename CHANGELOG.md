@@ -1,6 +1,6 @@
 # Project Rosetta / Prompt Wars — Enhancement Changelog
 
-This document tracks all new features, architecture extensions, data models, UI components, and improvements added to the **Prompt Wars (Project Rosetta)** codebase relative to the upstream repository [`neednotbenamed/promptwars`](https://github.com/neednotbenamed/promptwars).
+This document tracks all new features, architecture extensions, data models, UI components, voice integrations, and improvements added to the **Prompt Wars (Project Rosetta)** codebase relative to the upstream repository [`neednotbenamed/promptwars`](https://github.com/neednotbenamed/promptwars).
 
 ---
 
@@ -8,55 +8,72 @@ This document tracks all new features, architecture extensions, data models, UI 
 
 | Category | Upstream State (`neednotbenamed/promptwars`) | Enhanced State (`ajayanand-1/Interview_try`) |
 |---|---|---|
+| **AI Agent Personas & Fixed Gender Voices** | Generic agent labels, no gender balance | **5 Fixed Persona Profiles (2 Female, 2 Male, 1 Moderator)**: Dr. Maya Lin (♀ Technical), Dr. Rachel Thorne (♀ Skeptic), Marcus Vance (♂ HR), David Sterling (♂ Hiring Manager), Arthur Pendelton (♂ Chair) with immutable distinct voices. |
+| **Civil Parliamentary Deliberation** | Standard text dialogue | **Extremely Civil, Non-Overlapping Deliberation** systematically covering: (1) Core Problem, (2) Role Expectations, (3) Grounded Pros & Cons, and (4) Viable Solutions. |
+| **Interactive Voice Stream Player** | Basic CLI audio script | **Web Speech API In-Browser Player** providing sequential, non-overlapping audio streaming across female and male timbres with active-speaker waveform highlights. |
+| **Responsive Web Design** | Desktop-focused layout | **Universal Multi-Device Responsive UI** with mobile drawer navigation, hamburger menu, touch-friendly tab scrolling, and adaptive responsive card grids (`sm:`, `md:`, `lg:`). |
 | **Candidate Feedback Engine** | Not present | **Multi-Persona Candidate Feedback & Growth Playbook** synthesizing actionable guidance from HR, Skeptic, Hiring Manager, Technical, and General Secretary. |
 | **Resume Rewriting Guide** | Not present | **Evidence-grounded Resume Improvements** with Identified Issues, Actionable Recommendations, and side-by-side **Before vs. After rewrite examples**. |
 | **Target Job Skills Roadmap** | Basic memo gaps | **Structured Capabilities Roadmap** mapping Company Expectations, Verified Candidate Levels, and Concrete Growth Paths. |
 | **Company Expectations Guide** | Implicit in memos | **Explicit Organizational Standards** analyzing Accountability, Retention, Scientific Rigor, and Future Interview Advice. |
-| **API Endpoints** | `/api/evaluations/*` (metadata, rosetta, memos, debate, decision, report) | Added dedicated **`GET /api/evaluations/{run_id}/feedback`** with full Pydantic schema validation. |
-| **Frontend UI (React SPA)** | 5 Tabs (Overview, Rosetta, Memos, Debate, Decision Path) | Added 6th Tab **"💡 Candidate Feedback & Growth"** with interactive cards, before/after diffs, and 5-persona feedback grid. |
-| **Streamlit UI** | 6 Tabs | Added 7th Tab **"💡 Candidate Feedback"** with collapsible before/after rewrite blocks and skills breakdown. |
+| **API Endpoints** | Standard phase endpoints | Added dedicated **`GET /api/evaluations/{run_id}/feedback`** with full Pydantic schema validation. |
 | **PDF & Markdown Deliverables** | Executive Decision & Citations | Expanded to include **Candidate Feedback & Growth Playbook** directly in generated Markdown and ReportLab PDFs. |
-| **Automated Testing** | 47 tests | **55 Comprehensive Unit, Integration, and Traceability Tests** passing. |
+| **Automated Testing** | 47 tests | **55 Comprehensive Unit, Integration, and Traceability Tests** passing cleanly. |
 
 ---
 
-## 🛠️ Detailed Component Changes
+## 🎭 Fixed AI Agent Persona & Voice Roster
 
-### 1. Data Models (`src/models/decision.py`)
-- **`PersonaFeedbackItem`**: Captures persona name, punchy headline, constructive evaluation feedback, and key recommendation.
-- **`ResumeImprovementItem`**: Captures resume section/topic, identified issue from evaluation, actionable recommendation, and concrete `example_before` / `example_after` diffs.
-- **`RequiredSkillItem`**: Maps skill categories to company expectations, candidate verified status, and mastery roadmaps.
-- **`CompanyExpectationItem`**: Defines organizational standards, candidate performance findings, and future interview preparation tips.
-- **`CandidateFeedback`**: Aggregates all 4 dimensions into a unified feedback deliverable.
-- **`FinalReportData`**: Integrated optional `feedback: CandidateFeedback` field into core decision schema.
+The deliberation panel enforces a strict 2-Female / 2-Male evaluator structure plus an impartial Chair:
 
-### 2. Decision Engine (`src/decision/engine.py`)
-- Added specialized feedback synthesizers for:
-  - **Ananya Iyer**: Focuses on benchmark quantification (converting ~40% spot-checks to gold standard numbers), multi-agent graph framework ramp-up (LangGraph/CrewAI), and CI/CD pre-deploy evaluation harnesses.
-  - **Rohan Malhotra**: Focuses on attribution honesty (correcting solo architect claims), tenure stability narrative (avoiding 7-month departures), and quantitative observability.
-  - **Generic / Custom Candidates**: Dynamically derives evidence-grounded feedback, resume rewriting tips, and domain skill gap analyses from Rosetta index citations.
-  - **Auto-Resolved Cases**: Generates consensus feedback based on unanimous panel deliberation.
+1. **Dr. Maya Lin** — `technical_agent`
+   - **Gender**: ♀ Female
+   - **Voice**: `Karen` / Synthesis Female
+   - **Role**: Lead AI Systems Architect
+   - **Persona**: Analytical, methodical, precise software architect focusing on retrieval pipelines, graph concurrency, and execution correctness.
 
-### 3. Deliverables & Report Generators (`src/decision/reporter.py`)
-- **Markdown Report Generator (`generate_markdown_report`)**:
-  - Added Section `## 6. Comprehensive Candidate Feedback & Growth Playbook`.
-  - Structured subsections for Resume Improvements, Target Skills Roadmap, Company Expectations, and 5-Persona Breakdown.
-- **PDF Report Generator (`generate_pdf_report`)**:
-  - Implemented ReportLab flowables rendering Candidate Feedback & Growth Playbook on generated PDF exports.
+2. **Marcus Vance** — `hr_culture_agent`
+   - **Gender**: ♂ Male
+   - **Voice**: `Oliver` / Synthesis Male
+   - **Role**: Head of People & Organizational Culture
+   - **Persona**: Empathetic, psychologically perceptive, assessing ownership during outages, communication clarity, and psychological safety.
 
-### 4. API Endpoints (`src/api/routes/evaluations.py`)
-- Added **`GET /api/evaluations/{run_id}/feedback`**: Direct endpoint returning candidate feedback and growth playbook.
-- Updated **`GET /api/evaluations/{run_id}/decision`**: Returns feedback object alongside decision path.
+3. **David Sterling** — `hiring_manager_agent`
+   - **Gender**: ♂ Male
+   - **Voice**: `Fred` / Synthesis Male
+   - **Role**: VP of Engineering & Product Delivery
+   - **Persona**: Pragmatic, ROI-driven business leader assessing ramp-up costs, payroll risk, and multi-year retention horizons.
 
-### 5. React Frontend SPA (`frontend/`)
-- **`frontend/src/types/api.ts`**: Defined TypeScript interfaces for `CandidateFeedback`, `PersonaFeedbackItem`, `ResumeImprovementItem`, `RequiredSkillItem`, `CompanyExpectationItem`.
-- **`frontend/src/api/client.ts`**: Added `api.getFeedback(runId)` client method.
-- **`frontend/src/pages/EvaluationDetail.tsx`**:
-  - Added 6th Navigation Tab **"Candidate Feedback & Growth"**.
-  - Built interactive UI with top strategic takeaway banner, 2-column Before/After resume rewrite blocks, skills capability matrix, organizational standards breakdown, and 5-persona feedback cards.
+4. **Dr. Rachel Thorne** — `skeptic_agent`
+   - **Gender**: ♀ Female
+   - **Voice**: `Samantha` / Synthesis Female
+   - **Role**: Principal Forensic Auditor & Critic
+   - **Persona**: Disciplined, forensic investigator probing unverified metrics, inflated claims, and attribution discrepancies with polite tenacity.
 
-### 6. Streamlit Application (`streamlit_app.py`)
-- Added 7th Tab **"💡 Candidate Feedback"** with collapsible expanders for Resume Rewriting, Required Skills Roadmap, Company Expectations, and 5-Persona evaluation breakdown.
+5. **Arthur Pendelton** — `general_secretary`
+   - **Gender**: ♂ Male
+   - **Voice**: `Daniel` / Synthesis Male Chair
+   - **Role**: Panel Moderator & Chief Adjudicator
+   - **Persona**: Impartial, structured chair enforcing civil parliamentary order, managing round transitions, and synthesizing binding verdicts.
+
+---
+
+## 🏛️ Structured 4-Pillar Civil Discussion Framework
+
+Every debate round and turn is structured around four essential pillars without overlapping or contentious shouting:
+- 🎯 **1. The Problem**: Precise technical, cultural, or business challenge faced by the engineering platform.
+- 📋 **2. Role Expectation**: The standard and competency required by the hiring company.
+- ⚖️ **3. Pros and Cons**: Evidence-grounded assessment citing verified candidate strengths vs. identified risk factors.
+- 💡 **4. Viable Solutions**: Actionable onboarding remedies, pair programming plans, CI evaluation harnesses, or architectural mitigations.
+
+---
+
+## 📱 Mobile & Multi-Device Responsiveness
+
+- **Collapsible Mobile Drawer Sidebar**: Touch-friendly navigation menu with slide-in drawer and backdrop overlay on mobile/tablet viewports.
+- **Responsive Topbar**: Mobile hamburger toggle, adaptive search input width, and condensed action buttons.
+- **Adaptive Card & Table Layouts**: Grids automatically adjust (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-3/5`) with horizontal touch scrolling for data tables.
+- **Touch Targets**: All interactive buttons, tabs, and citation pills are optimized for mobile touch ergonomics (minimum 44px hit zones).
 
 ---
 

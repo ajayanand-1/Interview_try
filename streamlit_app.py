@@ -676,7 +676,29 @@ elif st.session_state["current_nav"] == "🔬 Evaluation Detail":
                         st.caption(f"{p_title} memo not available.")
 
         with tab_debate:
-            st.markdown("### Deliberation Transcript & Cross-Examination")
+            st.markdown("### 🎙 Parliamentary Civil Deliberation & Voice Roster")
+            st.caption("Sequential, civil discussion across 2 female and 2 male evaluators with distinct fixed voices.")
+
+            # Roster Columns
+            rc1, rc2, rc3, rc4, rc5 = st.columns(5)
+            with rc1:
+                st.markdown("**Dr. Maya Lin**")
+                st.caption("♀ Female | Voice: Karen\nLead AI Systems Architect")
+            with rc2:
+                st.markdown("**Marcus Vance**")
+                st.caption("♂ Male | Voice: Oliver\nHead of People & Culture")
+            with rc3:
+                st.markdown("**David Sterling**")
+                st.caption("♂ Male | Voice: Fred\nVP of Engineering & ROI")
+            with rc4:
+                st.markdown("**Dr. Rachel Thorne**")
+                st.caption("♀ Female | Voice: Samantha\nPrincipal Forensic Auditor")
+            with rc5:
+                st.markdown("**Arthur Pendelton**")
+                st.caption("♂ Male | Voice: Daniel\nGeneral Secretary (Chair)")
+
+            st.markdown("---")
+
             debate_path = run_dir / "debate" / f"{cid}_transcript.json"
             if debate_path.exists():
                 try:
