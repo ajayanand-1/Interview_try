@@ -3,6 +3,9 @@
 
 > A production-grade multi-agent recruitment deliberation system where four isolated AI personas evaluate candidate profiles, cross-examine evidence in structured debate, and synthesize binding hiring decisions with 100% citation traceability.
 
+> **Original Author**: [`neednotbenamed`](https://github.com/neednotbenamed)  
+> **Original Repository**: [neednotbenamed/promptwars](https://github.com/neednotbenamed/promptwars)
+
 ---
 
 ## 🚀 Key Innovations & Architecture
